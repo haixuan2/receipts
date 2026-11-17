@@ -1,0 +1,1065 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#f1efea">
+<meta name="description" content="Put everything you spent on a trip, a day or a moment onto one keepsake receipt.">
+<title>Receipts</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon.svg">
+<style>
+  :root {
+    color-scheme: light;
+    --bg: #f1efea;
+    --card: #ffffff;
+    --ink: #232126;
+    --muted: #77737c;
+    --line: #dedad2;
+    --error: #c8321e;
+    --tabs-h: 64px;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", sans-serif;
+    --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--sans); }
+  body { min-height: 100dvh; -webkit-text-size-adjust: 100%; }
+  .app { max-width: 480px; margin: 0 auto; min-height: 100dvh; padding-bottom: calc(var(--tabs-h) + env(safe-area-inset-bottom)); }
+  header.top { display: flex; align-items: center; justify-content: center; position: relative; height: 56px; padding: 0 16px; }
+  header.top h1 { font-size: 17px; font-weight: 650; margin: 0; }
+  header.top .left, header.top .right { position: absolute; top: 8px; }
+  header.top .left { left: 10px; } header.top .right { right: 10px; }
+  main { padding: 8px 20px 24px; }
+
+  button, input, textarea { font: inherit; color: inherit; }
+  button { cursor: pointer; }
+  .btn { border: 0; border-radius: 999px; padding: 15px 20px; font-weight: 650; font-size: 17px; background: var(--ink); color: #fff; width: 100%; }
+  .btn.secondary { background: #e4e1da; color: var(--ink); }
+  .btn:disabled { opacity: .55; cursor: default; }
+  .btn.small { width: auto; padding: 10px 18px; font-size: 15px; }
+  .icon-btn { border: 0; background: transparent; height: 40px; min-width: 40px; padding: 0 10px; border-radius: 999px; font-size: 16px; font-weight: 600; }
+  .icon-btn:hover { background: #e4e1da; }
+  :focus-visible { outline: 2px solid #3b6fd9; outline-offset: 2px; }
+
+  /* Form */
+  .field { margin-bottom: 18px; min-width: 0; }
+  .head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; }
+  .head label, .head .label { font-size: 13px; font-weight: 650; color: var(--muted); }
+  .head small { font-weight: 500; }
+  .counter { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .counter.over { color: var(--error); }
+  .box { display: flex; align-items: center; gap: 6px; background: var(--card); border: 1px solid transparent; border-radius: 12px; padding: 0 14px; min-width: 0; }
+  .box:focus-within { border-color: #b9b4aa; }
+  .invalid > .box, .invalid .box.bad { border-color: var(--error); }
+  .box input, .box textarea { border: 0; outline: 0; background: transparent; width: 100%; padding: 13px 0; font-size: 17px; min-width: 0; }
+  .box input[type="date"] { min-height: 48px; }
+  .box textarea { resize: vertical; min-height: 96px; line-height: 1.4; }
+  .box.amount { font-family: var(--mono); }
+  .box.amount span { color: var(--muted); }
+  .error { color: var(--error); font-size: 13px; margin: 6px 2px 0; }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+  .items { margin-bottom: 18px; }
+  .item { margin-bottom: 8px; }
+  .item .row { display: grid; grid-template-columns: minmax(0, 1fr) 118px 34px; gap: 8px; align-items: center; }
+  .item.solo .row { grid-template-columns: minmax(0, 1fr) 118px; }
+  .item .box { padding: 0 12px; }
+  .item .box input { font-size: 16px; padding: 12px 0; }
+  .item .remove { border: 0; background: none; color: var(--muted); font-size: 22px; line-height: 1; height: 34px; width: 34px; border-radius: 999px; padding: 0; }
+  .item .remove:hover { background: #e4e1da; color: var(--ink); }
+  .items-foot { display: flex; justify-content: space-between; align-items: center; padding-top: 4px; }
+  .link { border: 0; background: none; padding: 6px 0; font-weight: 600; font-size: 15px; }
+  .running { font-family: var(--mono); font-size: 15px; font-weight: 600; }
+  .running span { color: var(--muted); font-family: var(--sans); font-size: 13px; margin-right: 8px; }
+
+  .photo-pick { display: flex; align-items: center; justify-content: center; gap: 8px; background: var(--card); border: 1px dashed #c9c4b9; border-radius: 12px; padding: 16px; font-weight: 600; font-size: 15px; cursor: pointer; }
+  .photo-pick:focus-within { outline: 2px solid #3b6fd9; outline-offset: 2px; }
+  .photo-pick input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+  .photo-preview { background: #fbf8f0; border-radius: 12px; padding: 14px; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+  .photo-preview canvas { max-width: 100%; height: auto; }
+
+  .more-link { display: block; margin-bottom: 18px; }
+  .print-bar { position: sticky; bottom: calc(var(--tabs-h) + env(safe-area-inset-bottom)); background: linear-gradient(to top, var(--bg) 75%, transparent); padding: 14px 0 12px; margin-top: 6px; }
+  .save-error { color: var(--error); font-size: 14px; font-weight: 600; text-align: center; margin: 0 0 10px; }
+
+  /* Print stage */
+  .stage { display: flex; flex-direction: column; align-items: center; padding-top: 12px; }
+  .slot { width: 336px; max-width: 100%; height: 16px; border-radius: 999px; background: linear-gradient(#3d3d3d, #191919); position: relative; z-index: 1; box-shadow: 0 2px 4px rgba(0,0,0,.25); }
+  .slot::after { content: ""; position: absolute; left: 13px; right: 13px; top: 6px; height: 4px; border-radius: 4px; background: #000; }
+  .feed { overflow: hidden; padding: 0 16px 22px; margin-top: -8px; }
+  .feed canvas { transform: translateY(-105%); cursor: default; }
+  .feed.go canvas { transform: none; transition: transform var(--feed, 1s) linear; }
+  .feed.instant canvas { transform: none; }
+  .feed.done canvas { cursor: pointer; }
+  .after { width: 100%; text-align: center; visibility: hidden; opacity: 0; transition: opacity .2s; position: sticky; bottom: calc(var(--tabs-h) + env(safe-area-inset-bottom)); background: linear-gradient(to top, var(--bg) 80%, transparent); padding: 14px 0 12px; }
+  .after.show { visibility: visible; opacity: 1; }
+  .after p { color: var(--muted); font-weight: 600; font-size: 15px; margin: 4px 0 14px; }
+  .after .row { display: flex; gap: 12px; }
+
+  canvas.receipt { display: block; filter: drop-shadow(0 3px 5px rgba(0,0,0,.16)); }
+
+  /* List */
+  .list { list-style: none; margin: 0; padding: 0; }
+  .list li + li { border-top: 1px solid var(--line); }
+  .list a { display: flex; align-items: center; gap: 14px; padding: 12px 2px; text-decoration: none; color: inherit; }
+  .thumb { width: 46px; height: 58px; overflow: hidden; flex: none; }
+  .thumb canvas { width: 46px !important; height: auto !important; filter: drop-shadow(0 1px 1.5px rgba(0,0,0,.25)); }
+  .list .meta { flex: 1; min-width: 0; }
+  .list .meta b { font-size: 16px; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .list .meta span { color: var(--muted); font-size: 14px; }
+  .list .amt { font-family: var(--mono); font-size: 15px; font-weight: 600; }
+  .empty { text-align: center; padding: 22vh 0 0; }
+  .empty h2 { font-size: 20px; margin: 0 0 6px; }
+  .empty p { color: var(--muted); margin: 0 0 20px; }
+
+  /* Detail */
+  .detail { display: flex; justify-content: center; padding: 12px 0 8px; }
+  .menu { position: absolute; right: 0; top: 44px; background: var(--card); border-radius: 14px; box-shadow: 0 8px 30px rgba(0,0,0,.18); padding: 6px; min-width: 190px; z-index: 5; }
+  .menu button { display: block; width: 100%; text-align: left; border: 0; background: none; padding: 12px 14px; border-radius: 9px; font-size: 16px; }
+  .menu button:hover { background: #f1efea; }
+  .menu .danger { color: var(--error); }
+  .toast { position: fixed; left: 50%; bottom: calc(var(--tabs-h) + 20px + env(safe-area-inset-bottom)); transform: translateX(-50%); background: var(--ink); color: #fff; padding: 11px 18px; border-radius: 999px; font-size: 14px; font-weight: 600; z-index: 20; max-width: 90vw; text-align: center; }
+
+  dialog { border: 0; border-radius: 18px; padding: 22px; max-width: 320px; width: calc(100vw - 48px); box-shadow: 0 20px 60px rgba(0,0,0,.3); }
+  dialog::backdrop { background: rgba(0,0,0,.35); }
+  dialog h2 { font-size: 18px; margin: 0 0 6px; }
+  dialog p { color: var(--muted); margin: 0 0 18px; font-size: 15px; line-height: 1.4; }
+  dialog .row { display: flex; gap: 10px; }
+  .btn.danger { background: var(--error); }
+
+  /* Tabs */
+  nav.tabs { position: fixed; left: 0; right: 0; bottom: 0; height: calc(var(--tabs-h) + env(safe-area-inset-bottom)); padding-bottom: env(safe-area-inset-bottom); background: rgba(250,249,246,.92); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border-top: 1px solid var(--line); display: flex; justify-content: center; z-index: 10; }
+  nav.tabs a { flex: 1; max-width: 240px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; text-decoration: none; color: var(--muted); font-size: 12px; font-weight: 600; }
+  nav.tabs a[aria-current="page"] { color: var(--ink); }
+  nav.tabs svg { width: 24px; height: 24px; }
+  .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <div class="left" id="top-left"></div>
+    <h1 id="title">New Receipt</h1>
+    <div class="right" id="top-right"></div>
+  </header>
+  <main id="view"></main>
+</div>
+
+<nav class="tabs" aria-label="Sections">
+  <a href="#/new" id="tab-new">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 8V4h10v4"/><rect x="3" y="8" width="18" height="8" rx="2"/><path d="M7 13h10v7H7z"/></svg>
+    New
+  </a>
+  <a href="#/receipts" id="tab-receipts">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h12v18l-2-1.5L14 21l-2-1.5L10 21l-2-1.5L6 21z"/><path d="M9 8h6M9 12h6"/></svg>
+    Receipts
+  </a>
+</nav>
+
+<dialog id="confirm">
+  <h2>Delete this receipt?</h2>
+  <p>This can't be undone. Images you already saved stay where they are.</p>
+  <div class="row">
+    <button class="btn secondary small" id="confirm-cancel" style="flex:1">Cancel</button>
+    <button class="btn danger small" id="confirm-ok" style="flex:1">Delete</button>
+  </div>
+</dialog>
+<div class="sr" aria-live="polite" id="live"></div>
+
+<script>
+'use strict';
+
+/* ---------- Model ---------- */
+
+const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const LIMITS = { title: 60, itemName: 40, items: 40, location: 100, note: 200 };
+const MAX_MINOR = 9999999;
+
+// Calendar dates are plain YYYY-MM-DD strings, so they never shift with the time zone.
+function todayISO() {
+  const d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+function isValidISO(s) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s || '');
+  return !!m && +m[2] >= 1 && +m[2] <= 12 && +m[3] >= 1 && +m[3] <= 31;
+}
+function displayDate(iso) {
+  const [y, m, d] = iso.split('-').map(Number);
+  return MONTHS[m - 1] + ' ' + d + ', ' + y;
+}
+// "Nov 14 – 16, 2026", "Nov 30 – Dec 1, 2026", or both dates in full across years.
+function displayRange(start, end) {
+  if (!end || end === start) return displayDate(start);
+  const [y1, m1, d1] = start.split('-').map(Number);
+  const [y2, m2, d2] = end.split('-').map(Number);
+  if (y1 !== y2) return displayDate(start) + ' – ' + displayDate(end);
+  if (m1 !== m2) return MONTHS[m1 - 1] + ' ' + d1 + ' – ' + MONTHS[m2 - 1] + ' ' + d2 + ', ' + y1;
+  return MONTHS[m1 - 1] + ' ' + d1 + ' – ' + d2 + ', ' + y1;
+}
+
+function formatMoney(minor) {
+  const whole = String(Math.floor(minor / 100)).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  return '$' + whole + '.' + String(minor % 100).padStart(2, '0');
+}
+
+const AMOUNT_ERRORS = {
+  empty: 'Enter an amount.',
+  invalid: 'Enter a valid amount, like 12.50.',
+  negative: "Amount can't be negative.",
+  decimals: 'Use at most two decimal places.',
+  range: 'Each amount must be $99,999.99 or less.',
+};
+
+// Returns { minor } or { error }.
+function parseAmount(raw) {
+  let s = String(raw).trim();
+  if (!s) return { error: 'empty' };
+  let negative = false;
+  const stripMinus = () => { if (/^[-−]/.test(s)) { negative = true; s = s.slice(1); } };
+  stripMinus();
+  if (s.startsWith('$')) s = s.slice(1);
+  stripMinus();
+  s = s.trim();
+  // Some keyboards type "," as the decimal separator.
+  if (!s.includes('.') && (s.match(/,/g) || []).length === 1 && s.length - s.lastIndexOf(',') - 1 <= 2) {
+    s = s.replace(',', '.');
+  }
+  s = s.replace(/,/g, '');
+  const m = /^(\d*)(?:\.(\d*))?$/.exec(s);
+  if (!m || (m[1] === '' && !m[2])) return { error: 'invalid' };
+  if (negative) return { error: 'negative' };
+  const frac = m[2] || '';
+  if (frac.length > 2) return { error: 'decimals' };
+  const whole = m[1].replace(/^0+/, '');
+  if (whole.length > 5) return { error: 'range' };
+  const minor = Number(whole || 0) * 100 + Number(frac.padEnd(2, '0'));
+  if (minor > MAX_MINOR) return { error: 'range' };
+  return { minor };
+}
+
+const len = (s) => Array.from(s).length;
+
+// Error keys match form element ids: title, date, endDate, item-<row>, location, note.
+function validate(draft) {
+  const errors = {};
+  const title = draft.title.trim();
+  if (!title) errors.title = 'Give this receipt a title.';
+  else if (len(title) > LIMITS.title) errors.title = 'Title must be 60 characters or fewer.';
+
+  const start = draft.date || todayISO();
+  if (!isValidISO(start)) errors.date = 'Choose a date.';
+  const end = draft.endDate && draft.endDate !== start ? draft.endDate : null;
+  if (end && !isValidISO(end)) errors.endDate = 'Choose a valid end date.';
+  else if (end && end < start) errors.endDate = "End date can't be before the start date.";
+
+  // Rows left completely blank are ignored. A single item may go unnamed (a one-amount receipt).
+  const rows = draft.items.map((it, i) => ({ i, name: it.name.trim(), amount: it.amount.trim() }));
+  const filled = rows.filter((r) => r.name || r.amount);
+  const items = [];
+  if (!filled.length) errors['item-0'] = 'Enter an amount.';
+  for (const r of filled) {
+    const amount = parseAmount(r.amount);
+    if (amount.error) errors['item-' + r.i] = AMOUNT_ERRORS[amount.error];
+    else if (!r.name && filled.length > 1) errors['item-' + r.i] = 'Name this item.';
+    else if (len(r.name) > LIMITS.itemName) errors['item-' + r.i] = 'Item name must be 40 characters or fewer.';
+    else items.push({ name: r.name, amountMinor: amount.minor });
+  }
+
+  const location = draft.location.trim();
+  if (len(location) > LIMITS.location) errors.location = 'Location must be 100 characters or fewer.';
+  const note = draft.note.trim();
+  if (len(note) > LIMITS.note) errors.note = 'Note must be 200 characters or fewer.';
+
+  if (Object.keys(errors).length) return { errors };
+  return { errors, input: {
+    title, purchaseDate: start, endDate: end, items,
+    totalMinor: items.reduce((sum, it) => sum + it.amountMinor, 0),
+    location: location || null, note: note || null, photo: draft.photo || null,
+  } };
+}
+
+/* ---------- Storage ---------- */
+
+// Receipts and the draft live in one localStorage value, so "save receipt + clear draft"
+// is a single write: it either fully happens or not at all.
+const KEY = 'receipts.v1';
+const FAIL_SAVE = new URLSearchParams(location.search).has('failsave'); // QA hook
+
+function newDraft() {
+  const id = (crypto.randomUUID && crypto.randomUUID()) ||
+    Array.from(crypto.getRandomValues(new Uint8Array(16)), (b) => b.toString(16).padStart(2, '0')).join('');
+  return { id, title: '', date: null, endDate: null, items: [{ name: '', amount: '' }], location: '', note: '', photo: null };
+}
+
+// Receipts and drafts saved by the first version had one merchant and one amount.
+function upgradeReceipt(r) {
+  if (Array.isArray(r.items)) return r;
+  return Object.assign({}, r, {
+    title: r.merchant, items: [{ name: '', amountMinor: r.amountMinor }], totalMinor: r.amountMinor,
+    endDate: null, photo: null,
+  });
+}
+function upgradeDraft(d) {
+  if (!d) return newDraft();
+  if (Array.isArray(d.items) && d.items.length) return d;
+  return Object.assign(newDraft(), {
+    id: d.id, title: d.merchant || '', date: d.date || null,
+    items: [{ name: '', amount: d.amount || '' }], location: d.location || '', note: d.note || '',
+  });
+}
+
+function loadState() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(KEY));
+    if (raw && Array.isArray(raw.receipts)) return { receipts: raw.receipts.map(upgradeReceipt), draft: upgradeDraft(raw.draft) };
+  } catch (e) { /* unreadable storage: start empty */ }
+  return { receipts: [], draft: newDraft() };
+}
+
+let state = loadState();
+
+function write(next) {
+  localStorage.setItem(KEY, JSON.stringify(next));
+  state = next;
+}
+
+// Newest start date first; within a day, newest created first.
+function sorted(receipts) {
+  return receipts.slice().sort((a, b) =>
+    a.purchaseDate < b.purchaseDate ? 1 : a.purchaseDate > b.purchaseDate ? -1 : b.createdAt - a.createdAt);
+}
+
+function saveDraft(draft) {
+  state.draft = draft;
+  try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) { /* keep in memory */ }
+}
+
+// The receipt takes the draft's ID, so retrying one submission can never create a second receipt.
+function commit(input) {
+  if (FAIL_SAVE) throw new Error('simulated save failure');
+  const id = state.draft.id;
+  const existing = state.receipts.find((r) => r.id === id);
+  const receipt = existing || Object.assign({ id, currency: 'USD', createdAt: Date.now(), templateVersion: 2 }, input);
+  write({ receipts: sorted(existing ? state.receipts : state.receipts.concat(receipt)), draft: newDraft() });
+  return receipt;
+}
+
+function removeReceipt(id) {
+  write({ receipts: state.receipts.filter((r) => r.id !== id), draft: state.draft });
+  thumbs.delete(id);
+}
+
+/* ---------- Photo: black-and-white pixel style ---------- */
+// A photo is reduced to a small 1-bit bitmap (dark/light pixels only) and stored as packed bits,
+// so it prints like a thermal printer would and costs only a couple of kilobytes.
+
+const PHOTO_W = 126;          // bitmap width; drawn at 2 receipt pixels per dot
+const PHOTO_MAX_RATIO = 1.25; // taller photos are centre-cropped
+
+function loadImage(file) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => { URL.revokeObjectURL(url); resolve(img); };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('unreadable image')); };
+    img.src = url;
+  });
+}
+
+async function photoFromFile(file) {
+  const img = await loadImage(file);
+  const iw = img.naturalWidth, ih = img.naturalHeight;
+  if (!iw || !ih) throw new Error('empty image');
+  const ratio = Math.min(ih / iw, PHOTO_MAX_RATIO);
+  const w = PHOTO_W, h = Math.max(8, Math.round(w * ratio));
+  const srcH = iw * ratio, srcY = (ih - srcH) / 2;
+  const c = document.createElement('canvas');
+  c.width = w; c.height = h;
+  const ctx = c.getContext('2d', { willReadFrequently: true });
+  ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, w, h);
+  ctx.imageSmoothingQuality = 'high';
+  ctx.drawImage(img, 0, srcY, iw, srcH, 0, 0, w, h);
+  const rgba = ctx.getImageData(0, 0, w, h).data;
+
+  // Greyscale, then stretch contrast between the 2nd and 98th percentiles.
+  const grey = new Float32Array(w * h);
+  const hist = new Uint32Array(256);
+  for (let i = 0; i < grey.length; i++) {
+    const v = 0.299 * rgba[i * 4] + 0.587 * rgba[i * 4 + 1] + 0.114 * rgba[i * 4 + 2];
+    grey[i] = v; hist[Math.round(v)]++;
+  }
+  let lo = 0, hi = 255, acc = 0;
+  for (let v = 0; v < 256; v++) { acc += hist[v]; if (acc >= grey.length * 0.02) { lo = v; break; } }
+  acc = 0;
+  for (let v = 255; v >= 0; v--) { acc += hist[v]; if (acc >= grey.length * 0.02) { hi = v; break; } }
+  const span = Math.max(1, hi - lo);
+  for (let i = 0; i < grey.length; i++) grey[i] = Math.min(255, Math.max(0, (grey[i] - lo) * 255 / span));
+
+  // Atkinson dithering: crisp, high-contrast dots.
+  const bits = new Uint8Array(Math.ceil(w * h / 8));
+  const spread = [[1, 0], [2, 0], [-1, 1], [0, 1], [1, 1], [0, 2]];
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const i = y * w + x;
+      const dark = grey[i] < 128;
+      if (dark) bits[i >> 3] |= 1 << (i & 7);
+      const err = (grey[i] - (dark ? 0 : 255)) / 8;
+      for (const [dx, dy] of spread) {
+        const nx = x + dx, ny = y + dy;
+        if (nx >= 0 && nx < w && ny < h) grey[ny * w + nx] += err;
+      }
+    }
+  }
+  let binary = '';
+  for (let i = 0; i < bits.length; i++) binary += String.fromCharCode(bits[i]);
+  return { w, h, bits: btoa(binary) };
+}
+
+// Draws the dark dots of a photo; `px` is the size of one dot.
+function drawPhoto(ctx, photo, x0, y0, px) {
+  const binary = atob(photo.bits);
+  for (let y = 0; y < photo.h; y++) {
+    let runStart = -1;
+    for (let x = 0; x <= photo.w; x++) {
+      const i = y * photo.w + x;
+      const dark = x < photo.w && (binary.charCodeAt(i >> 3) >> (i & 7)) & 1;
+      if (dark && runStart < 0) runStart = x;
+      if (!dark && runStart >= 0) { ctx.fillRect(x0 + runStart * px, y0 + y * px, (x - runStart) * px, px); runStart = -1; }
+    }
+  }
+}
+
+/* ---------- Receipt template (canvas) ---------- */
+// One drawing routine for the print stage, detail, thumbnails and image export.
+
+const W = 300, PAD_X = 24, PAD_TOP = 30, PAD_BOTTOM = 34;
+const MONO = 'ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, "Liberation Mono", "PingFang SC", "Microsoft YaHei", monospace';
+const INK = '#211f24';
+
+function hash32(str) {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 0x01000193); }
+  return h >>> 0;
+}
+function rng(seed) {
+  let a = seed >>> 0;
+  return () => {
+    a = (a + 0x6D2B79F5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+const CJK = /[⺀-鿿가-힯豈-﫿＀-￯　-ヿ]/;
+
+// Greedy wrap: breaks at spaces, between CJK characters, and inside words too long for a line.
+function wrap(ctx, text, maxWidth) {
+  const lines = [];
+  for (const para of String(text).split('\n')) {
+    const tokens = [];
+    let word = '';
+    for (const ch of Array.from(para)) {
+      if (ch === ' ' || CJK.test(ch)) { if (word) { tokens.push(word); word = ''; } tokens.push(ch); }
+      else word += ch;
+    }
+    if (word) tokens.push(word);
+
+    let line = '';
+    const push = () => { lines.push(line.replace(/\s+$/, '')); line = ''; };
+    for (const tok of tokens) {
+      if (ctx.measureText(line + tok).width <= maxWidth) { line += tok; continue; }
+      if (line.trim()) push(); else line = '';
+      if (tok === ' ') continue;
+      if (ctx.measureText(tok).width <= maxWidth) { line = tok; continue; }
+      for (const ch of Array.from(tok)) {
+        if (line && ctx.measureText(line + ch).width > maxWidth) push();
+        line += ch;
+      }
+    }
+    push();
+  }
+  return lines;
+}
+
+function drawReceipt(r, scale) {
+  scale = scale || Math.min(3, Math.max(2, window.devicePixelRatio || 1));
+  const inner = W - PAD_X * 2;
+  const measure = document.createElement('canvas').getContext('2d');
+  const ops = [];
+  let y = PAD_TOP;
+
+  const text = (str, font, lineH, align, opts) => {
+    opts = opts || {};
+    measure.font = font;
+    const lines = opts.noWrap ? [str] : wrap(measure, str, opts.width || inner);
+    for (const ln of lines) {
+      ops.push({ t: 'text', str: ln, font, align, y: y + lineH / 2, spacing: opts.spacing || 0, alpha: opts.alpha || 1 });
+      y += lineH;
+    }
+  };
+  const rule = () => { ops.push({ t: 'rule', y: y + 0.5 }); y += 1; };
+
+  // Header: title, date or date range, optional place.
+  text(r.title, 'bold 22px ' + MONO, 29, 'center');
+  y += 10;
+  text(displayRange(r.purchaseDate, r.endDate).toUpperCase(), '12px ' + MONO, 16, 'center', { spacing: 1, noWrap: true });
+  if (r.location) { y += 5; text(r.location, '12px ' + MONO, 17, 'center'); }
+
+  if (r.photo) {
+    y += 18;
+    const px = inner / r.photo.w;
+    ops.push({ t: 'photo', photo: r.photo, y, px });
+    y += r.photo.h * px;
+  }
+
+  y += 20; rule();
+
+  // Line items. A lone unnamed item is just the total, so the list is skipped.
+  const itemised = !(r.items.length === 1 && !r.items[0].name);
+  if (itemised) {
+    const itemFont = '13px ' + MONO;
+    measure.font = itemFont;
+    const amountW = Math.max(...r.items.map((it) => measure.measureText(formatMoney(it.amountMinor)).width));
+    y += 14;
+    r.items.forEach((it, i) => {
+      if (i) y += 7;
+      ops.push({ t: 'text', str: formatMoney(it.amountMinor), font: itemFont, align: 'right', y: y + 9, spacing: 0, alpha: 1 });
+      text(it.name, itemFont, 18, 'left', { width: inner - amountW - 12 });
+    });
+    y += 14; rule();
+  }
+
+  // Total, shrunk if needed so very large sums still fit beside the label.
+  y += 18;
+  const total = formatMoney(r.totalMinor);
+  let size = 28;
+  for (; size > 16; size--) {
+    measure.font = 'bold ' + size + 'px ' + MONO;
+    if (measure.measureText(total).width <= inner - 64) break;
+  }
+  const totalY = y + 17;
+  ops.push({ t: 'text', str: 'TOTAL', font: '600 13px ' + MONO, align: 'left', y: totalY + 3, spacing: 1.5, alpha: 1 });
+  ops.push({ t: 'text', str: total, font: 'bold ' + size + 'px ' + MONO, align: 'right', y: totalY, spacing: 0, alpha: 1 });
+  y += 34 + 18;
+
+  if (r.note) { rule(); y += 16; text(r.note, '13px ' + MONO, 20, 'left'); y += 16; }
+  y += 14;
+  text('PERSONAL RECORD', '500 8.5px ' + MONO, 11, 'center', { spacing: 2.5, alpha: 0.7, noWrap: true });
+  const H = Math.ceil(y + PAD_BOTTOM);
+
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.round(W * scale);
+  canvas.height = Math.round(H * scale);
+  canvas.style.width = W + 'px';
+  canvas.style.height = H + 'px';
+  canvas.className = 'receipt';
+  const ctx = canvas.getContext('2d');
+  ctx.scale(scale, scale);
+  const rand = rng(hash32(r.id));
+
+  // Paper outline: straight cut on top, torn sawtooth at the bottom.
+  ctx.beginPath();
+  ctx.moveTo(0, 0); ctx.lineTo(W, 0); ctx.lineTo(W, H - 2);
+  let x = W, notch = true;
+  while (x > 0) {
+    x = Math.max(0, x - 4.5 * (0.8 + rand() * 0.5));
+    ctx.lineTo(x, notch ? H - 5 - rand() * 2 : H - rand() * 1.5);
+    notch = !notch;
+  }
+  ctx.closePath();
+  ctx.clip();
+
+  // Warm white thermal paper with faint roll bands and fibres.
+  const grad = ctx.createLinearGradient(0, 0, 0, H);
+  grad.addColorStop(0, '#fbf8f0'); grad.addColorStop(1, '#f8f4ea');
+  ctx.fillStyle = grad; ctx.fillRect(0, 0, W, H);
+  for (let i = 0; i < 5; i++) {
+    ctx.fillStyle = 'rgba(0,0,0,' + (0.006 + rand() * 0.007) + ')';
+    ctx.fillRect(rand() * W, 0, 18 + rand() * 50, H);
+  }
+  const fibres = Math.floor(W * H / 45);
+  for (let i = 0; i < fibres; i++) {
+    const dark = rand() < 0.6;
+    ctx.fillStyle = dark ? 'rgba(0,0,0,' + (0.02 + rand() * 0.045) + ')' : 'rgba(255,255,255,' + (0.25 + rand() * 0.35) + ')';
+    ctx.fillRect(rand() * W, rand() * H, 0.5 + rand() * 1.4, 0.5);
+  }
+
+  // Ink on its own layer so the print can be made slightly uneven.
+  const inkCanvas = document.createElement('canvas');
+  inkCanvas.width = canvas.width; inkCanvas.height = canvas.height;
+  const ink = inkCanvas.getContext('2d');
+  ink.scale(scale, scale);
+  ink.fillStyle = INK; ink.strokeStyle = INK; ink.textBaseline = 'middle';
+  for (const op of ops) {
+    ink.globalAlpha = 1;
+    if (op.t === 'rule') {
+      ink.setLineDash([4, 3]); ink.lineWidth = 1;
+      ink.beginPath(); ink.moveTo(PAD_X, op.y); ink.lineTo(W - PAD_X, op.y); ink.stroke();
+      continue;
+    }
+    if (op.t === 'photo') { drawPhoto(ink, op.photo, PAD_X, op.y, op.px); continue; }
+    ink.font = op.font;
+    if ('letterSpacing' in ink) ink.letterSpacing = op.spacing + 'px';
+    ink.globalAlpha = op.alpha;
+    ink.textAlign = op.align;
+    const tx = op.align === 'center' ? W / 2 + op.spacing / 2 : op.align === 'right' ? W - PAD_X : PAD_X;
+    ink.fillText(op.str, tx, op.y);
+  }
+  ink.globalAlpha = 1;
+  ink.globalCompositeOperation = 'destination-out';
+  for (let ry = 0; ry < H; ry += 2) {
+    ink.fillStyle = 'rgba(0,0,0,' + rand() * 0.16 + ')';
+    ink.fillRect(0, ry, W, 2);
+  }
+  for (let i = 0; i < 2; i++) {
+    ink.fillStyle = 'rgba(0,0,0,0.3)';
+    ink.fillRect(PAD_X + rand() * inner, 0, 0.8, H);
+  }
+  ctx.drawImage(inkCanvas, 0, 0, W, H);
+
+  canvas.setAttribute('role', 'img');
+  canvas.setAttribute('aria-label', spokenText(r));
+  return canvas;
+}
+
+function spokenText(r) {
+  const parts = ['Receipt', r.title, displayRange(r.purchaseDate, r.endDate)];
+  if (r.location) parts.push(r.location);
+  if (r.photo) parts.push('Photo');
+  for (const it of r.items) if (it.name) parts.push(it.name + ' ' + formatMoney(it.amountMinor));
+  parts.push('Total ' + formatMoney(r.totalMinor));
+  if (r.note) parts.push('Note: ' + r.note);
+  parts.push('Personal record');
+  return parts.join('. ');
+}
+
+// Thumbnails are cached in memory only and rebuilt on demand.
+const thumbs = new Map();
+function thumbnail(r) {
+  if (!thumbs.has(r.id)) {
+    const c = drawReceipt(r, 1);
+    c.removeAttribute('role'); c.setAttribute('aria-hidden', 'true');
+    thumbs.set(r.id, c);
+  }
+  return thumbs.get(r.id);
+}
+
+// Full-length PNG of the whole receipt on a neutral backdrop.
+function exportBlob(r) {
+  const scale = 3, pad = 28;
+  const src = drawReceipt(r, scale);
+  const out = document.createElement('canvas');
+  out.width = src.width + pad * 2 * scale;
+  out.height = src.height + pad * 2 * scale;
+  const ctx = out.getContext('2d');
+  ctx.fillStyle = '#ededed'; ctx.fillRect(0, 0, out.width, out.height);
+  ctx.shadowColor = 'rgba(0,0,0,0.18)'; ctx.shadowBlur = 5 * scale; ctx.shadowOffsetY = 3 * scale;
+  ctx.drawImage(src, pad * scale, pad * scale);
+  return new Promise((resolve, reject) => out.toBlob((b) => b ? resolve(b) : reject(new Error('export failed')), 'image/png'));
+}
+
+/* ---------- Views ---------- */
+
+const $ = (id) => document.getElementById(id);
+const view = $('view');
+let printed = null;      // receipt currently on the print stage
+let attempted = false;   // show field errors only after the first Print tap
+let showMore = false;
+
+function el(tag, attrs, children) {
+  const node = document.createElement(tag);
+  for (const k in attrs || {}) {
+    if (k === 'text') node.textContent = attrs[k];
+    else if (k.startsWith('on')) node.addEventListener(k.slice(2), attrs[k]);
+    else if (attrs[k] !== null && attrs[k] !== undefined) node.setAttribute(k, attrs[k]);
+  }
+  for (const c of [].concat(children || [])) if (c) node.append(c);
+  return node;
+}
+function announce(msg) { $('live').textContent = ''; setTimeout(() => { $('live').textContent = msg; }, 30); }
+function toast(msg) {
+  document.querySelectorAll('.toast').forEach((t) => t.remove());
+  const t = el('div', { class: 'toast', role: 'status', text: msg });
+  document.body.append(t);
+  setTimeout(() => t.remove(), 3200);
+}
+
+function setChrome(title, tab, left, right) {
+  $('title').textContent = title;
+  document.title = title ? title + ' · Receipts' : 'Receipts';
+  $('top-left').replaceChildren(...(left ? [left] : []));
+  $('top-right').replaceChildren(...(right ? [right] : []));
+  for (const name of ['new', 'receipts']) {
+    if (tab === name) $('tab-' + name).setAttribute('aria-current', 'page');
+    else $('tab-' + name).removeAttribute('aria-current');
+  }
+}
+
+/* New receipt form */
+
+function patchDraft(change) {
+  const next = Object.assign({}, state.draft);
+  change(next);
+  saveDraft(next);
+}
+
+function renderForm(focusId) {
+  setChrome('New Receipt', 'new');
+  const d = state.draft;
+  if (d.location || d.note) showMore = true;
+
+  const field = (name, label, control, extra) => el('div', { class: 'field', id: 'f-' + name }, [
+    el('div', { class: 'head' }, [typeof label === 'string' ? el('label', { for: 'i-' + name, text: label }) : label, extra]),
+    control,
+    el('p', { class: 'error', id: 'e-' + name, role: 'alert', hidden: '' }),
+  ]);
+  const input = (name, attrs) => el('input', Object.assign({
+    id: 'i-' + name, name, autocomplete: 'off', 'aria-describedby': 'e-' + name,
+    oninput: (e) => { patchDraft((n) => { n[name] = e.target.value; }); refresh(); },
+  }, attrs));
+
+  const optional = (text) => {
+    const label = el('label', { for: 'i-endDate', text: text + ' ' });
+    label.append(el('small', { text: '· optional' }));
+    return label;
+  };
+
+  const form = el('form', { novalidate: '', onsubmit: onPrint, onkeydown: onFormKey }, [
+    field('title', 'Title', el('div', { class: 'box' },
+      input('title', { type: 'text', placeholder: 'Roadtrip to Lost Maples, dinner out…', value: d.title, enterkeyhint: 'next' }))),
+    el('div', { class: 'two' }, [
+      field('date', 'Date', el('div', { class: 'box' }, el('input', {
+        id: 'i-date', type: 'date', value: d.date || todayISO(), 'aria-describedby': 'e-date',
+        oninput: (e) => { patchDraft((n) => { n.date = e.target.value || null; }); refresh(); },
+      }))),
+      field('endDate', optional('Until'), el('div', { class: 'box' }, el('input', {
+        id: 'i-endDate', type: 'date', value: d.endDate || '', 'aria-describedby': 'e-endDate',
+        oninput: (e) => { patchDraft((n) => { n.endDate = e.target.value || null; }); refresh(); },
+      }))),
+    ]),
+    renderItems(d),
+    renderPhoto(d),
+  ]);
+
+  if (showMore) {
+    const counter = el('span', { class: 'counter', id: 'note-count' });
+    const note = el('textarea', {
+      id: 'i-note', name: 'note', rows: '3', 'aria-describedby': 'e-note',
+      placeholder: "What made it worth remembering",
+      oninput: (e) => { patchDraft((n) => { n.note = e.target.value; }); refresh(); },
+    });
+    note.value = d.note;
+    form.append(
+      field('location', 'Location', el('div', { class: 'box' },
+        input('location', { type: 'text', placeholder: 'City, park or address', value: d.location }))),
+      field('note', 'Note', el('div', { class: 'box' }, note), counter));
+  } else {
+    form.append(el('button', { type: 'button', class: 'link more-link', text: '+ Add location or note',
+      onclick: () => { showMore = true; renderForm('i-location'); } }));
+  }
+
+  form.append(el('div', { class: 'print-bar' }, [
+    el('p', { class: 'save-error', id: 'save-error', role: 'alert', hidden: '' }),
+    el('button', { class: 'btn', id: 'print', type: 'submit', text: 'Print' }),
+  ]));
+
+  view.replaceChildren(form);
+  refresh();
+  if (focusId && $(focusId)) $(focusId).focus();
+}
+
+function renderItems(d) {
+  const solo = d.items.length === 1;
+  const rows = d.items.map((it, i) => el('div', { class: 'item' + (solo ? ' solo' : ''), id: 'f-item-' + i }, [
+    el('div', { class: 'row' }, [
+      el('div', { class: 'box' }, el('input', {
+        id: 'i-item-' + i + '-name', type: 'text', autocomplete: 'off', value: it.name,
+        placeholder: solo ? 'Item (optional)' : 'Item', 'aria-label': 'Item ' + (i + 1) + ' name',
+        'aria-describedby': 'e-item-' + i, enterkeyhint: 'next',
+        oninput: (e) => { patchDraft((n) => { n.items = n.items.map((x, j) => j === i ? { name: e.target.value, amount: x.amount } : x); }); refresh(); },
+      })),
+      el('div', { class: 'box amount' }, [
+        el('span', { text: '$', 'aria-hidden': 'true' }),
+        el('input', {
+          id: 'i-item-' + i + '-amount', type: 'text', inputmode: 'decimal', autocomplete: 'off', value: it.amount,
+          placeholder: '0.00', 'aria-label': 'Item ' + (i + 1) + ' amount in dollars',
+          'aria-describedby': 'e-item-' + i, enterkeyhint: 'next',
+          oninput: (e) => { patchDraft((n) => { n.items = n.items.map((x, j) => j === i ? { name: x.name, amount: e.target.value } : x); }); refresh(); },
+        }),
+      ]),
+      solo ? null : el('button', { type: 'button', class: 'remove', 'aria-label': 'Remove item ' + (i + 1), text: '×',
+        onclick: () => { patchDraft((n) => { n.items = n.items.filter((x, j) => j !== i); }); renderForm(); } }),
+    ]),
+    el('p', { class: 'error', id: 'e-item-' + i, role: 'alert', hidden: '' }),
+  ]));
+
+  const canAdd = d.items.length < LIMITS.items;
+  return el('div', { class: 'items' }, [
+    el('div', { class: 'head' }, el('span', { class: 'label', text: 'Items' })),
+    ...rows,
+    el('div', { class: 'items-foot' }, [
+      canAdd ? el('button', { type: 'button', class: 'link', id: 'add-item', text: '+ Add item', onclick: addItem }) : el('span'),
+      el('div', { class: 'running', 'aria-live': 'off' }, [el('span', { text: 'Total' }), el('b', { id: 'running-total' })]),
+    ]),
+  ]);
+}
+
+function addItem() {
+  if (state.draft.items.length >= LIMITS.items) return;
+  patchDraft((n) => { n.items = n.items.concat({ name: '', amount: '' }); });
+  renderForm('i-item-' + (state.draft.items.length - 1) + '-name');
+}
+
+function renderPhoto(d) {
+  const head = el('div', { class: 'head' }, el('span', { class: 'label', text: 'Photo ' }));
+  head.firstChild.append(el('small', { text: '· optional' }));
+  if (d.photo) {
+    const px = 2;
+    const c = el('canvas', { width: d.photo.w * px, height: d.photo.h * px, role: 'img', 'aria-label': 'Photo preview in black and white' });
+    const ctx = c.getContext('2d');
+    ctx.fillStyle = INK;
+    drawPhoto(ctx, d.photo, 0, 0, px);
+    return el('div', { class: 'field' }, [head, el('div', { class: 'photo-preview' }, [
+      c,
+      el('button', { type: 'button', class: 'link', text: 'Remove photo',
+        onclick: () => { patchDraft((n) => { n.photo = null; }); renderForm(); } }),
+    ])]);
+  }
+  const file = el('input', { type: 'file', accept: 'image/*', id: 'i-photo', 'aria-label': 'Add a photo',
+    onchange: async (e) => {
+      const f = e.target.files && e.target.files[0];
+      if (!f) return;
+      try {
+        const photo = await photoFromFile(f);
+        patchDraft((n) => { n.photo = photo; });
+        renderForm();
+      } catch (err) {
+        e.target.value = '';
+        toast("Couldn't read that photo. Try another one.");
+      }
+    } });
+  return el('div', { class: 'field' }, [head, el('label', { class: 'photo-pick' }, [file, '＋ Add a photo'])]);
+}
+
+// Enter moves through the fields instead of printing, so a long list can be typed quickly.
+function onFormKey(e) {
+  if (e.key !== 'Enter' || e.target.tagName !== 'INPUT' || e.isComposing) return;
+  e.preventDefault();
+  const id = e.target.id;
+  const m = /^i-item-(\d+)-(name|amount)$/.exec(id);
+  if (id === 'i-title') $('i-item-0-name').focus();
+  else if (m && m[2] === 'name') $('i-item-' + m[1] + '-amount').focus();
+  else if (m) {
+    const next = $('i-item-' + (Number(m[1]) + 1) + '-name');
+    if (next) next.focus();
+    else if (e.target.value.trim()) addItem();
+  }
+}
+
+// Updates errors, the running total and the note counter in place (no re-render, so focus is kept).
+function refresh() {
+  const errors = attempted ? validate(state.draft).errors : {};
+  view.querySelectorAll('.error[id^="e-"]').forEach((msg) => {
+    const key = msg.id.slice(2);
+    const box = $('f-' + key);
+    const text = errors[key];
+    box.classList.toggle('invalid', !!text);
+    if (text) { if (msg.textContent !== text) msg.textContent = text; msg.hidden = false; }
+    else { msg.hidden = true; msg.textContent = ''; }
+    box.querySelectorAll('input, textarea').forEach((i) => {
+      if (text) i.setAttribute('aria-invalid', 'true'); else i.removeAttribute('aria-invalid');
+    });
+  });
+  const total = state.draft.items.reduce((sum, it) => {
+    const a = parseAmount(it.amount);
+    return sum + (a.error ? 0 : a.minor);
+  }, 0);
+  if ($('running-total')) $('running-total').textContent = formatMoney(total);
+  const counter = $('note-count');
+  if (counter) {
+    const n = len(state.draft.note);
+    counter.textContent = n + '/' + LIMITS.note;
+    counter.classList.toggle('over', n > LIMITS.note);
+  }
+}
+
+function onPrint(e) {
+  e.preventDefault();
+  const button = $('print');
+  if (button.disabled) return;
+  attempted = true;
+  $('save-error').hidden = true;
+
+  const result = validate(state.draft);
+  if (!result.input) {
+    if ((result.errors.location || result.errors.note) && !showMore) { showMore = true; renderForm(); }
+    refresh();
+    const first = Array.from(view.querySelectorAll('.error[id^="e-"]')).find((m) => !m.hidden);
+    const key = first.id.slice(2);
+    const target = key.startsWith('item-')
+      ? $('i-' + key + (result.errors[key].includes('ame') && !result.errors[key].includes('amount') ? '-name' : '-amount'))
+      : $('i-' + key);
+    target.focus();
+    target.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    return;
+  }
+
+  // Lock the button right away; the write happens on the next tick so the locked state paints first.
+  button.disabled = true;
+  button.textContent = 'Printing…';
+  setTimeout(() => {
+    try {
+      printed = commit(result.input);
+      attempted = false;
+      showMore = false;
+      renderStage();
+    } catch (err) {
+      button.disabled = false;
+      button.textContent = 'Print';
+      const msg = $('save-error');
+      msg.textContent = 'Receipt not saved. Please try again.';
+      msg.hidden = false;
+    }
+  }, 0);
+}
+
+/* Print stage: only shown after the receipt is already saved. */
+
+function renderStage() {
+  setChrome('', 'new');
+  const receipt = printed;
+  const canvas = drawReceipt(receipt);
+  const feed = el('div', { class: 'feed' }, canvas);
+  const viewIt = () => { printed = null; location.hash = '#/r/' + receipt.id; };
+  const after = el('div', { class: 'after' }, [
+    el('p', { text: '✓ Saved to your receipts' }),
+    el('div', { class: 'row' }, [
+      el('button', { class: 'btn secondary', text: 'View Receipt', onclick: viewIt }),
+      el('button', { class: 'btn', text: 'Print Another', onclick: () => { printed = null; renderForm(); window.scrollTo(0, 0); } }),
+    ]),
+  ]);
+  view.replaceChildren(el('div', { class: 'stage' }, [el('div', { class: 'slot', 'aria-hidden': 'true' }), feed, after]));
+  window.scrollTo(0, 0);
+
+  // Longer receipts take a little longer to feed, within the 0.8–1.2 s target.
+  const seconds = Math.min(1.2, Math.max(0.8, parseFloat(canvas.style.height) / 500));
+  feed.style.setProperty('--feed', seconds + 's');
+
+  let finished = false;
+  const done = () => {
+    if (finished) return;
+    finished = true;
+    feed.classList.add('done');
+    after.classList.add('show');
+    canvas.addEventListener('click', viewIt);
+    announce('Saved to your receipts');
+  };
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    feed.classList.add('instant');
+    done();
+  } else {
+    requestAnimationFrame(() => requestAnimationFrame(() => feed.classList.add('go')));
+    canvas.addEventListener('transitionend', done);
+    setTimeout(done, seconds * 1000 + 400); // safety net if the tab was hidden during the feed
+  }
+}
+
+/* Receipt folder */
+
+function renderList() {
+  setChrome('Receipts', 'receipts');
+  if (!state.receipts.length) {
+    view.replaceChildren(el('div', { class: 'empty' }, [
+      el('h2', { text: 'No receipts yet' }),
+      el('p', { text: 'Print something worth remembering.' }),
+      el('a', { class: 'btn small', href: '#/new', text: 'Print Your First', style: 'text-decoration:none;display:inline-block' }),
+    ]));
+    return;
+  }
+  view.replaceChildren(el('ul', { class: 'list' }, sorted(state.receipts).map((r) =>
+    el('li', {}, el('a', { href: '#/r/' + r.id }, [
+      el('div', { class: 'thumb' }, thumbnail(r)),
+      el('div', { class: 'meta' }, [el('b', { text: r.title }), el('span', { text: displayRange(r.purchaseDate, r.endDate) })]),
+      el('div', { class: 'amt', text: formatMoney(r.totalMinor) }),
+    ])))));
+}
+
+/* Detail */
+
+function renderDetail(id) {
+  const r = state.receipts.find((x) => x.id === id);
+  if (!r) { location.replace('#/receipts'); return; }
+
+  const back = el('a', { class: 'icon-btn', href: '#/receipts', text: '‹ Receipts',
+    style: 'display:inline-flex;align-items:center;text-decoration:none;color:inherit' });
+  const menu = el('div', { class: 'menu', hidden: '', role: 'menu' }, [
+    el('button', { role: 'menuitem', text: 'Save Image', onclick: () => { menu.hidden = true; saveImage(r); } }),
+    el('button', { role: 'menuitem', class: 'danger', text: 'Delete Receipt', onclick: () => { menu.hidden = true; confirmDelete(r); } }),
+  ]);
+  const more = el('button', { class: 'icon-btn', 'aria-label': 'More', 'aria-haspopup': 'menu', text: '•••',
+    onclick: (e) => { e.stopPropagation(); menu.hidden = !menu.hidden; } });
+  setChrome('', 'receipts', back, el('div', { style: 'position:relative' }, [more, menu]));
+  view.replaceChildren(el('div', { class: 'detail' }, drawReceipt(r)));
+  window.scrollTo(0, 0);
+}
+document.addEventListener('click', () => document.querySelectorAll('.menu').forEach((m) => { m.hidden = true; }));
+
+async function saveImage(r) {
+  try {
+    const blob = await exportBlob(r);
+    const name = 'receipt-' + r.purchaseDate + '.png';
+    const file = new File([blob], name, { type: 'image/png' });
+    // On phones the share sheet offers "Save Image"; elsewhere download the file.
+    if (window.matchMedia('(pointer: coarse)').matches && navigator.canShare && navigator.canShare({ files: [file] })) {
+      await navigator.share({ files: [file] });
+      return;
+    }
+    const url = URL.createObjectURL(blob);
+    const a = el('a', { href: url, download: name });
+    document.body.append(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
+    toast('Image saved');
+  } catch (err) {
+    if (err && err.name === 'AbortError') return;
+    toast("Couldn't save the image. Please try again.");
+  }
+}
+
+function confirmDelete(r) {
+  const dialog = $('confirm');
+  $('confirm-cancel').onclick = () => dialog.close();
+  $('confirm-ok').onclick = () => {
+    dialog.close();
+    try { removeReceipt(r.id); location.hash = '#/receipts'; }
+    catch (err) { toast("Couldn't delete. Please try again."); }
+  };
+  dialog.showModal();
+}
+
+/* Router */
+
+function route() {
+  const hash = location.hash;
+  if (hash.startsWith('#/r/')) return renderDetail(decodeURIComponent(hash.slice(4)));
+  if (hash === '#/receipts') return renderList();
+  if (printed) return renderStage();
+  renderForm();
+}
+window.addEventListener('hashchange', route);
+// Another tab changed the data: pick it up.
+window.addEventListener('storage', (e) => {
+  if (e.key !== KEY) return;
+  state = loadState(); thumbs.clear();
+  if (location.hash === '#/receipts' || location.hash.startsWith('#/r/')) route();
+});
+route();
+
+if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+}
+</script>
+</body>
+</html>
