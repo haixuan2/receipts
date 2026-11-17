@@ -1530,7 +1530,7 @@ function renderForm(focusId) {
 
   const form = el('form', { novalidate: '', onsubmit: onPrint, onkeydown: onFormKey }, [
     field('title', '标题', el('div', { class: 'box' },
-      input('title', { type: 'text', placeholder: '例如：周末自驾去 Lost Maples', value: d.title, enterkeyhint: 'next' }))),
+      input('title', { type: 'text', value: d.title, enterkeyhint: 'next' }))),
     el('div', { class: 'two' }, [
       field('date', '日期', el('div', { class: 'box' }, el('input', {
         id: 'i-date', type: 'date', value: d.date || todayISO(), 'aria-describedby': 'e-date',
@@ -1650,7 +1650,6 @@ function renderItems(d) {
   return el('div', { class: 'items' }, [
     el('div', { class: 'head' }, [
       el('span', { class: 'label', text: '花费明细' }),
-      el('span', { class: 'counter', text: '金额可连加，如 18.2+20.1+5' }),
     ]),
     ...rows,
     el('div', { class: 'items-foot' }, [
@@ -1718,7 +1717,9 @@ function renderExtras(d) {
     field('tip', '小费', '金额或 %', el('div', { class: 'presets' }, TIP_PRESETS.map((p) =>
       el('button', { type: 'button', text: p, 'aria-pressed': 'false', onclick: () => setField('tip', p) })))),
     el('div', { class: 'items-foot grand' }, [
-      el('span', { class: 'counter', text: '百分比按小计计算' }),
+      // Closing clears both fields, since an open section with values is what keeps it shown.
+      el('button', { type: 'button', class: 'link', text: '收起', 'aria-label': '收起并清除税和小费',
+        onclick: () => { showExtras = false; patchDraft((n) => { n.tax = ''; n.tip = ''; }); renderForm(); } }),
       el('div', { class: 'running' }, [el('span', { text: '合计' }), el('b', { id: 'grand-total' })]),
     ]),
   ]);
