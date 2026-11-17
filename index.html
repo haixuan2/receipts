@@ -85,6 +85,17 @@
   .people-row .box input { font-size: 16px; padding: 10px 0; }
   .people-row .per { margin-left: auto; font-family: var(--mono); font-size: 15px; font-weight: 600; }
   .people.invalid .box { border-color: var(--error); }
+  .pay { margin-top: 12px; }
+  .pay-row { display: flex; align-items: center; gap: 10px; }
+  .pay-row > label { font-size: 13px; font-weight: 650; color: var(--muted); white-space: nowrap; }
+  .pay-row .box { flex: 1; padding: 0 12px; font-family: var(--mono); gap: 2px; }
+  .pay-row .box span { color: var(--muted); font-size: 15px; }
+  .pay-row .box input { font-size: 16px; padding: 10px 0; }
+  .pay-hint { margin: 6px 2px 0; }
+  .pay.invalid .box { border-color: var(--error); }
+  .actions { display: flex; gap: 10px; width: 100%; max-width: 340px; margin-top: 18px; }
+  .actions .btn { flex: 1; }
+  .after .copy { margin: -6px 0 8px; }
   .items-foot { display: flex; justify-content: space-between; align-items: center; padding-top: 2px; }
   .link { border: 0; background: none; padding: 6px 0; font-weight: 600; font-size: 15px; }
   .running { font-family: var(--mono); font-size: 15px; font-weight: 600; }
@@ -194,6 +205,7 @@
 </dialog>
 <div class="sr" aria-live="polite" id="live"></div>
 
+<script src="vendor/qrcode.js"></script>
 <script>
 'use strict';
 
@@ -272,6 +284,65 @@ const plainAmount = (minor) => (minor / 100).toFixed(2);
 
 const len = (s) => Array.from(s).length;
 
+// Getting paid back: a split receipt can carry the payer's account. Venmo, PayPal and Cash App get a
+// QR code that opens a payment for the per-person amount; Zelle has no such link, so it is printed as text.
+const PAY_METHODS = {
+  venmo: { name: 'Venmo', prefix: '@', placeholder: '用户名' },
+  paypal: { name: 'PayPal', prefix: 'paypal.me/', placeholder: '用户名' },
+  cashapp: { name: 'Cash App', prefix: '$', placeholder: 'cashtag' },
+  zelle: { name: 'Zelle', prefix: '', placeholder: '邮箱或手机号' },
+};
+const PAY_ORDER = ['venmo', 'paypal', 'cashapp', 'zelle'];
+
+// Accepts "@name", "$name" or a pasted profile link such as venmo.com/u/name or paypal.me/name.
+function normalizeHandle(method, raw) {
+  let h = String(raw || '').trim();
+  if (method === 'zelle') return h;
+  h = h.replace(/^https?:\/\//i, '').replace(/[?#].*$/, '').replace(/\/+$/, '');
+  if (h.includes('/')) {
+    const segs = h.split('/');
+    // paypal.me/name/12.50 → name; venmo.com/u/name → name; cash.app/$name → name
+    h = /paypal\.me$/i.test(segs[0]) ? segs[1] || '' : segs[segs.length - 1];
+  }
+  return h.replace(/^[@$]+/, '');
+}
+function handleError(method, h) {
+  if (!h) return '请填写收款账号。';
+  if (method === 'zelle') return len(h) > 60 ? '账号最多 60 个字符。' : null;
+  return /^[A-Za-z0-9_.-]{1,30}$/.test(h) ? null : '用户名只能包含英文字母、数字、_ . -';
+}
+function payDisplay(pay) {
+  return pay.method === 'zelle' ? pay.handle : PAY_METHODS[pay.method].prefix + pay.handle;
+}
+// The amount each person pays (the total for an unsplit receipt).
+function shareMinor(r) { return r.people >= 2 ? Math.round(r.totalMinor / r.people) : r.totalMinor; }
+// A link that opens the payment, prefilled with the amount, or null for Zelle.
+function payLink(r) {
+  const p = r.pay;
+  if (!p || p.method === 'zelle') return null;
+  const amount = plainAmount(shareMinor(r));
+  const h = encodeURIComponent(p.handle);
+  // Keep the note short: every Chinese character costs 9 bytes in the URL and makes the QR denser.
+  const note = encodeURIComponent(Array.from(r.title).slice(0, 16).join(''));
+  if (p.method === 'venmo') return 'https://venmo.com/' + h + '?txn=pay&amount=' + amount + '&note=' + note;
+  if (p.method === 'paypal') return 'https://paypal.me/' + h + '/' + amount + 'USD';
+  if (p.method === 'cashapp') return 'https://cash.app/$' + h + '/' + amount;
+  return null;
+}
+
+// The last account used is remembered, so the next split receipt starts with it filled in.
+const PAY_KEY = 'receipts.pay.v1';
+function loadPayPref() {
+  try {
+    const p = JSON.parse(localStorage.getItem(PAY_KEY));
+    if (p && PAY_METHODS[p.method] && typeof p.handle === 'string') return { method: p.method, handle: p.handle };
+  } catch (e) { /* none saved */ }
+  return { method: '', handle: '' };
+}
+function savePayPref(pay) {
+  try { localStorage.setItem(PAY_KEY, JSON.stringify(pay)); } catch (e) { /* not critical */ }
+}
+
 // Error keys match form element ids: title, date, endDate, item-<row>, people, location, note.
 // `focus` says which input of an item row the error belongs to.
 function validate(draft) {
@@ -316,6 +387,16 @@ function validate(draft) {
     else if (Number(peopleText) >= 2) people = Number(peopleText);
   }
 
+  // A payment account is only printed on a split receipt.
+  let pay = null;
+  const method = draft.pay && PAY_METHODS[draft.pay.method] ? draft.pay.method : '';
+  if (people && method) {
+    const handle = normalizeHandle(method, draft.pay.handle);
+    const err = handleError(method, handle);
+    if (err) errors.pay = err;
+    else pay = { method, handle };
+  }
+
   const location = draft.location.trim();
   if (len(location) > LIMITS.location) errors.location = '地点最多 100 个字符。';
   const note = draft.note.trim();
@@ -324,7 +405,7 @@ function validate(draft) {
   if (Object.keys(errors).length) return { errors, focus };
   return { errors, focus, input: {
     title, purchaseDate: start, endDate: end, items,
-    totalMinor: items.reduce((sum, it) => sum + it.amountMinor, 0), people,
+    totalMinor: items.reduce((sum, it) => sum + it.amountMinor, 0), people, pay,
     location: location || null, note: note || null, photo: draft.photo || null,
     style: THEMES[draft.style] ? draft.style : 'thermal',
   } };
@@ -356,7 +437,7 @@ function newDraft(style) {
   const id = (crypto.randomUUID && crypto.randomUUID()) ||
     Array.from(crypto.getRandomValues(new Uint8Array(16)), (b) => b.toString(16).padStart(2, '0')).join('');
   return { id, title: '', date: null, endDate: null, items: [{ name: '', amount: '', category: '', parts: [] }],
-    people: '', location: '', note: '', photo: null, style: style || 'thermal' };
+    people: '', pay: loadPayPref(), location: '', note: '', photo: null, style: style || 'thermal' };
 }
 
 // Receipts and drafts saved by earlier versions had one merchant and one amount, and no style.
@@ -371,7 +452,7 @@ function upgradeReceipt(r) {
 function upgradeDraft(d) {
   if (!d) return newDraft();
   if (Array.isArray(d.items) && d.items.length) {
-    return Object.assign({ style: 'thermal', people: '' }, d,
+    return Object.assign({ style: 'thermal', people: '', pay: loadPayPref() }, d,
       { items: d.items.map((it) => Object.assign({ category: '', parts: [] }, it)) });
   }
   return Object.assign(newDraft(), {
@@ -426,6 +507,7 @@ function commit(input) {
     no: receiptNo(id, now.getTime()),
     printedAt: String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0'),
   }, input);
+  if (!existing && receipt.pay) savePayPref(receipt.pay);
   // The next draft starts in the style just used.
   write({ receipts: sorted(existing ? state.receipts : state.receipts.concat(receipt)), draft: newDraft(receipt.style) });
   return receipt;
@@ -888,6 +970,35 @@ function drawReceipt(r, scale) {
   }
   y += 18;
 
+  // Getting paid back: a QR code that opens the payment for the per-person amount.
+  if (r.pay && PAY_METHODS[r.pay.method]) {
+    const m = PAY_METHODS[r.pay.method];
+    const link = payLink(r);
+    let qr = null;
+    if (link && typeof qrcode === 'function') {
+      try { qr = qrcode(0, 'M'); qr.addData(link); qr.make(); } catch (e) { qr = null; }
+    }
+    rule(); y += 18;
+    if (qr) {
+      text('扫码付款 · ' + m.name, '600 12px ' + F, 18, 'center', { spacing: 2, noWrap: true });
+      y += 10;
+      const n = qr.getModuleCount();
+      const quiet = 3;
+      const mod = Math.max(2, Math.min(3, Math.floor(150 / (n + quiet * 2))));
+      const size = (n + quiet * 2) * mod;
+      y = Math.round(y);
+      ops.push({ t: 'qr', qr, n, mod, quiet, size, x: Math.round((W - size) / 2), y });
+      y += size + 10;
+      text(payDisplay(r.pay) + ' · ' + formatMoney(shareMinor(r)), '12px ' + F, 16, 'center', { noWrap: true });
+    } else {
+      text(m.name + ' 转账至', '600 12px ' + F, 18, 'center', { spacing: 2, noWrap: true });
+      y += 4;
+      text(payDisplay(r.pay), 'bold 15px ' + F, 20, 'center');
+      text('每人 ' + formatMoney(shareMinor(r)), '12px ' + F, 16, 'center', { noWrap: true, alpha: 0.85 });
+    }
+    y += 18;
+  }
+
   if (r.note) { rule(); y += 16; text(r.note, '13px ' + F, 20, 'left'); y += 16; }
 
   // Receipt number, as on a till receipt. The ticket style also prints it under a barcode.
@@ -992,6 +1103,7 @@ function drawReceipt(r, scale) {
     }
     if (op.t === 'bar') { ink.fillStyle = T.ink; ink.fillRect(PAD_X, op.y, inner, op.h); continue; }
     if (op.t === 'photo') { paintPhoto(ink, ctx, T, op.photo, PAD_X, op.y, inner, seed); continue; }
+    if (op.t === 'qr') continue; // drawn after the ink layer so wear never touches it
     if (op.t === 'barcode') {
       // Decorative bars derived from the receipt ID; not a scannable code.
       const bars = rng(seed ^ 0x51ed);
@@ -1039,6 +1151,26 @@ function drawReceipt(r, scale) {
   }
   ctx.drawImage(inkCanvas, 0, 0, W, H);
 
+  // QR codes stay crisp and high-contrast so phones can scan them: dark modules on a light patch
+  // (a cream card on dark papers), with a quiet zone that also covers grid lines.
+  for (const op of ops) {
+    if (op.t !== 'qr') continue;
+    ctx.fillStyle = T.dark ? '#fbf8f0' : T.paper[0];
+    if (T.dark && ctx.roundRect) { ctx.beginPath(); ctx.roundRect(op.x, op.y, op.size, op.size, 6); ctx.fill(); }
+    else ctx.fillRect(op.x, op.y, op.size, op.size);
+    ctx.fillStyle = T.dark ? T.paper[1] : T.ink;
+    const o = op.quiet * op.mod;
+    for (let row = 0; row < op.n; row++) {
+      for (let col = 0; col < op.n; col++) {
+        if (!op.qr.isDark(row, col)) continue;
+        let run = 1;
+        while (col + run < op.n && op.qr.isDark(row, col + run)) run++;
+        ctx.fillRect(op.x + o + col * op.mod, op.y + o + row * op.mod, run * op.mod, op.mod);
+        col += run - 1;
+      }
+    }
+  }
+
   canvas.setAttribute('role', 'img');
   canvas.setAttribute('aria-label', spokenText(r));
   return canvas;
@@ -1054,6 +1186,7 @@ function spokenText(r) {
   }
   parts.push('合计 ' + formatMoney(r.totalMinor));
   if (r.people >= 2) parts.push(r.people + ' 人，人均 ' + formatMoney(Math.round(r.totalMinor / r.people)));
+  if (r.pay && PAY_METHODS[r.pay.method]) parts.push(PAY_METHODS[r.pay.method].name + ' 收款 ' + payDisplay(r.pay) + (payLink(r) ? '，附付款二维码' : ''));
   if (r.note) parts.push('备注：' + r.note);
   parts.push('编号 ' + (r.no || receiptNo(r.id, r.createdAt)));
   return parts.join('。');
@@ -1309,7 +1442,41 @@ function renderItems(d) {
         el('span', { class: 'per', id: 'per-person' }),
       ]),
       el('p', { class: 'error', id: 'e-people', role: 'alert', hidden: '' }),
+      renderPay(d),
     ]),
+  ]);
+}
+
+// Shown only while the receipt is split (see refresh); the account is remembered for next time.
+function renderPay(d) {
+  const pay = d.pay || { method: '', handle: '' };
+  const m = PAY_METHODS[pay.method];
+  const select = el('select', { id: 'i-pay-method', class: m ? null : 'none', 'aria-label': '收款方式',
+    onchange: (e) => { patchDraft((n) => { n.pay = { method: e.target.value, handle: (n.pay && n.pay.handle) || '' }; }); renderForm(e.target.value ? 'i-pay' : 'i-pay-method'); },
+  }, [el('option', { value: '', text: '不印收款码' }), ...PAY_ORDER.map((k) => el('option', { value: k, text: PAY_METHODS[k].name }))]);
+  select.value = pay.method || '';
+  return el('div', { class: 'pay', id: 'f-pay', hidden: '' }, [
+    el('div', { class: 'pay-row' }, [
+      el('label', { for: 'i-pay-method', text: '收款' }),
+      el('div', { class: 'cat' }, select),
+      m ? el('div', { class: 'box' }, [
+        m.prefix ? el('span', { text: m.prefix, 'aria-hidden': 'true' }) : null,
+        el('input', {
+          id: 'i-pay', type: 'text', autocomplete: 'off', enterkeyhint: 'done', autocapitalize: 'off', spellcheck: 'false',
+          value: pay.handle, placeholder: m.placeholder, maxlength: '80', 'aria-label': m.name + ' 账号', 'aria-describedby': 'e-pay h-pay',
+          oninput: (e) => { patchDraft((n) => { n.pay = { method: pay.method, handle: e.target.value }; }); refresh(); },
+          // "@name" or a pasted profile link becomes just the name.
+          onchange: (e) => {
+            const h = normalizeHandle(pay.method, e.target.value);
+            if (h !== e.target.value) { e.target.value = h; patchDraft((n) => { n.pay = { method: pay.method, handle: h }; }); refresh(); }
+          },
+        }),
+      ]) : null,
+    ]),
+    el('p', { class: 'counter pay-hint', id: 'h-pay', text: !m ? '选一个收款方式，小票上会印出付款码，朋友扫码就能付'
+      : pay.method === 'zelle' ? 'Zelle 没有付款链接，账号会以文字印在小票上'
+      : '小票上印出付款码，扫码直接打开 ' + m.name + '，金额已填好' }),
+    el('p', { class: 'error', id: 'e-pay', role: 'alert', hidden: '' }),
   ]);
 }
 
@@ -1373,7 +1540,7 @@ function onFormKey(e) {
   const id = e.target.id;
   const m = /^i-item-(\d+)-(name|amount|category)$/.exec(id);
   if (id === 'i-title') $('i-item-0-name').focus();
-  else if (id === 'i-people') e.target.blur();
+  else if (id === 'i-people' || id === 'i-pay') e.target.blur();
   else if (m && m[2] === 'category') e.target.blur();
   else if (m && m[2] === 'name') $('i-item-' + m[1] + '-amount').focus();
   else if (m) {
@@ -1419,6 +1586,7 @@ function refresh() {
   if (per) {
     const n = /^\d{1,2}$/.test(String(state.draft.people || '').trim()) ? Number(state.draft.people) : 0;
     per.textContent = n >= 2 ? '每人 ' + formatMoney(Math.round(total / n)) : '';
+    if ($('f-pay')) $('f-pay').hidden = n < 2;
   }
   const counter = $('note-count');
   if (counter) {
@@ -1477,6 +1645,11 @@ function renderStage() {
   const viewIt = () => { printed = null; location.hash = '#/r/' + receipt.id; };
   const after = el('div', { class: 'after' }, [
     el('p', { text: '✓ 已收进小票夹' }),
+    receipt.people >= 2 ? el('div', { class: 'copy' }, [
+      el('button', { type: 'button', class: 'link', text: '保存图片', onclick: () => saveImage(receipt) }),
+      el('span', { text: '  ·  ', 'aria-hidden': 'true', style: 'color:var(--muted)' }),
+      el('button', { type: 'button', class: 'link', text: '复制群聊文案', onclick: () => copyChatText(receipt) }),
+    ]) : null,
     el('div', { class: 'row' }, [
       el('button', { class: 'btn secondary', text: '查看小票', onclick: viewIt }),
       el('button', { class: 'btn', text: '再印一张', onclick: () => { printed = null; renderForm(); window.scrollTo(0, 0); } }),
@@ -1547,6 +1720,11 @@ function renderDetail(id, keepScroll) {
   const y = window.scrollY;
   view.replaceChildren(el('div', { class: 'detail' }, [
     drawReceipt(r),
+    // A split receipt is usually about to be sent to the group, so its actions sit right below it.
+    r.people >= 2 ? el('div', { class: 'actions' }, [
+      el('button', { class: 'btn secondary small', text: '保存图片', onclick: () => saveImage(r) }),
+      el('button', { class: 'btn small', text: '复制群聊文案', onclick: () => copyChatText(r) }),
+    ]) : null,
     el('div', { class: 'styles-head', text: '更换样式' }),
     stylePicker(THEMES[r.style] ? r.style : 'thermal', (key) => {
       try { restyleReceipt(r.id, key); renderDetail(r.id, true); }
@@ -1576,6 +1754,34 @@ async function saveImage(r) {
     if (err && err.name === 'AbortError') return;
     toast('图片保存失败，请重试。');
   }
+}
+
+// A message to paste into the group chat next to the receipt image, with the payment link to tap.
+function chatText(r) {
+  const lines = [r.title + ' · ' + displayRange(r.purchaseDate, r.endDate)];
+  lines.push('合计 ' + formatMoney(r.totalMinor) + (r.people >= 2 ? '，' + r.people + ' 人，每人 ' + formatMoney(shareMinor(r)) : ''));
+  if (r.pay && PAY_METHODS[r.pay.method]) {
+    const link = payLink(r);
+    lines.push(link ? PAY_METHODS[r.pay.method].name + ' 点这里付：' + link
+      : PAY_METHODS[r.pay.method].name + ' 转账至：' + payDisplay(r.pay));
+  }
+  return lines.join('\n');
+}
+
+async function copyChatText(r) {
+  const str = chatText(r);
+  try {
+    await navigator.clipboard.writeText(str);
+  } catch (err) {
+    // Older browsers or no clipboard permission: copy through a hidden text area.
+    const ta = el('textarea', { readonly: '', style: 'position:fixed;top:0;left:0;opacity:0' });
+    ta.value = str;
+    document.body.append(ta); ta.select();
+    const ok = document.execCommand && document.execCommand('copy');
+    ta.remove();
+    if (!ok) { toast('复制失败，请重试。'); return; }
+  }
+  toast('文案已复制，粘贴到群里就行');
 }
 
 function confirmDelete(r) {

@@ -1,6 +1,6 @@
 // Offline support: try the network first so updates arrive, fall back to the cached copy.
-const CACHE = 'receipts-v4';
-const FILES = ['./', 'index.html', 'manifest.webmanifest', 'icon.svg'];
+const CACHE = 'receipts-v5';
+const FILES = ['./', 'index.html', 'manifest.webmanifest', 'icon.svg', 'vendor/qrcode.js'];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(FILES)).then(() => self.skipWaiting()));
