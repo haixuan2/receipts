@@ -198,6 +198,34 @@
   .cur-pick select { position: absolute; inset: 0; opacity: 0; width: 100%; font-size: 16px; cursor: pointer; }
   .cur-pick:focus-within { outline: 2px solid #3b6fd9; outline-offset: 2px; }
 
+  .kind-seg { display: flex; width: 100%; margin-bottom: 12px; }
+  .kind-seg button { flex: 1; padding: 9px 10px; font-size: 15px; }
+  .presets.wrap { flex-wrap: wrap; }
+  .presets.wrap button { font-family: var(--sans); }
+  .poster-pick { display: flex; align-items: center; justify-content: center; aspect-ratio: 2 / 3; width: 46%; margin: 0 auto; background: var(--fill); border: 1px dashed #c9c4b9; border-radius: 12px; font-weight: 600; font-size: 15px; cursor: pointer; text-align: center; padding: 10px; }
+  .poster-pick:focus-within, .poster-change:focus-within { outline: 2px solid #3b6fd9; outline-offset: 2px; }
+  .poster-pick input, .poster-change input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+  .poster-row { display: flex; gap: 16px; align-items: center; }
+  .poster-thumb { width: 96px; height: 144px; object-fit: cover; border-radius: 8px; flex: none; }
+  .poster-actions { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
+  .poster-change { position: relative; display: inline-block; cursor: pointer; }
+  .thumb.poster { display: flex; align-items: center; justify-content: center; }
+  .thumb.poster img { width: 39px; height: 58px; object-fit: cover; border-radius: 3px; box-shadow: 0 1px 2px rgba(0,0,0,.3); }
+  .poster-blank { width: 39px; height: 58px; border-radius: 3px; background: #d9d4ca; }
+  canvas.ticket { filter: drop-shadow(0 4px 8px rgba(0,0,0,.18)); }
+
+  .list + .backup-card, .empty + .backup-card { margin-top: 24px; }
+  .backup-status { color: var(--muted); font-size: 14px; margin: -4px 0 0; line-height: 1.5; }
+  .backup-status.due { color: var(--ink); }
+  .backup-card .actions { margin-top: 12px; }
+  .file-btn { position: relative; text-align: center; cursor: pointer; }
+  .file-btn input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+  .file-btn:focus-within { outline: 2px solid #3b6fd9; outline-offset: 2px; }
+  .hint-card p { color: var(--muted); font-size: 14px; line-height: 1.5; margin: -6px 0 0; }
+  .hint-card .card-head { margin-bottom: 8px; }
+  .hint-card .icon-btn { font-size: 22px; color: var(--muted); }
+  .empty { padding-top: 16vh; }
+
   /* Style picker */
   .styles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
   .styles button { border: 2px solid transparent; background: #e9e6df; border-radius: 14px; padding: 8px 4px 6px; display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 600; color: var(--muted); }
@@ -361,6 +389,27 @@ const I18N = {
     'theme.notebook': '手帐', 'theme.blueprint': '蓝图', 'theme.newsprint': '报纸', 'theme.gameboy': '掌机',
     'cur.USD': '美元', 'cur.CNY': '人民币', 'cur.EUR': '欧元', 'cur.GBP': '英镑', 'cur.JPY': '日元', 'cur.HKD': '港币',
     'cur.TWD': '新台币', 'cur.CAD': '加元', 'cur.AUD': '澳元', 'cur.SGD': '新加坡元', 'cur.KRW': '韩元',
+    'kind.receipt': '小票', 'kind.movie': '电影票', 'aria.kind': '类型', 'mv.formTitle': '新建电影票', 'sp.movie': '电影票',
+    'mv.poster': '海报', 'mv.posterAdd': '＋ 上传海报', 'mv.posterChange': '更换海报', 'mv.posterRemove': '移除',
+    'toast.posterBad': '无法读取这张图片，换一张试试。', 'toast.posterSaveFail': '海报没存上，请重试。',
+    'mv.card.film': '电影', 'mv.title': '片名', 'mv.titleEn': '原名', 'mv.date': '日期', 'mv.time': '场次', 'mv.special': '特别场',
+    'special.premiere': '首映', 'special.midnight': '午夜场', 'special.preview': '点映', 'special.rerelease': '重映', 'special.festival': '影展',
+    'mv.card.seat': '影院和座位', 'mv.cinema': '影院', 'ph.cinema': '影院名称或地址', 'mv.hall': '影厅', 'ph.hall': '5 号厅',
+    'mv.lang': '语言字幕', 'ph.lang': '原声中字', 'mv.seats': '座位', 'ph.seats': 'F12，回车添加', 'mv.formats': '格式',
+    'mv.formatList': ['IMAX', '杜比影院', '3D', '4DX', '70mm', '2D'],
+    'mv.card.with': '和谁一起看', 'mv.card.price': '票价', 'mv.price': '金额',
+    'mv.err.title': '请填写片名。', 'mv.err.long': '最多 {n} 个字符。', 'mv.err.chip': '每项最多 {n} 个字符。',
+    'tk.date': '日期', 'tk.time': '场次', 'tk.hall': '影厅', 'tk.seats': '座位', 'tk.seat': 'SEAT', 'tk.with': '和 {list} 一起',
+    'filter.all': '全部', 'filter.receipt': '小票', 'filter.movie': '电影',
+    'home.title': '添加到主屏幕', 'home.dismiss': '关闭提示',
+    'home.ios': '从主屏幕打开，小票不会因为一段时间没打开就被 Safari 清掉。在 Safari 里点“分享”，再选“添加到主屏幕”。',
+    'home.other': '从主屏幕打开，小票更不容易被浏览器清掉。在浏览器菜单里选“添加到主屏幕”或“安装应用”。',
+    'backup.title': '备份', 'backup.export': '导出备份', 'backup.import': '从备份恢复', 'backup.file': '小票备份',
+    'backup.never': '还没有备份过。换手机或清除浏览器数据前，先导出一份。', 'backup.last': '上次备份：{when}',
+    'backup.newer': '上次备份：{when}，之后新增了 {n} 张', 'backup.restoreOnly': '有备份文件的话，可以从这里恢复。',
+    'backup.saved': '备份已保存', 'backup.exportFail': '备份没导出成功，请重试。', 'backup.badFile': '这不是小票的备份文件。',
+    'backup.nothing': '备份里的小票这里都已经有了。', 'backup.importFail': '恢复失败，可能是存储空间不够。',
+    'backup.restored': '已恢复 {n} 张', 'backup.restoredSkip': '已恢复 {n} 张，跳过 {m} 张已有的',
   },
   en: {
     'app.name': 'Receipts', 'app.desc': 'Turn the spending from a trip, a day or a moment into a receipt worth keeping.',
@@ -422,6 +471,27 @@ const I18N = {
     'theme.notebook': 'Notebook', 'theme.blueprint': 'Blueprint', 'theme.newsprint': 'Newsprint', 'theme.gameboy': 'Handheld',
     'cur.USD': 'US dollar', 'cur.CNY': 'Chinese yuan', 'cur.EUR': 'Euro', 'cur.GBP': 'British pound', 'cur.JPY': 'Japanese yen', 'cur.HKD': 'Hong Kong dollar',
     'cur.TWD': 'New Taiwan dollar', 'cur.CAD': 'Canadian dollar', 'cur.AUD': 'Australian dollar', 'cur.SGD': 'Singapore dollar', 'cur.KRW': 'Korean won',
+    'kind.receipt': 'Receipt', 'kind.movie': 'Movie ticket', 'aria.kind': 'Type', 'mv.formTitle': 'New movie ticket', 'sp.movie': 'Movie ticket',
+    'mv.poster': 'Poster', 'mv.posterAdd': '+ Upload poster', 'mv.posterChange': 'Replace poster', 'mv.posterRemove': 'Remove',
+    'toast.posterBad': "Couldn't read that image. Try another.", 'toast.posterSaveFail': "Couldn't save the poster. Try again.",
+    'mv.card.film': 'Film', 'mv.title': 'Title', 'mv.titleEn': 'Original title', 'mv.date': 'Date', 'mv.time': 'Showtime', 'mv.special': 'Special screening',
+    'special.premiere': 'Premiere', 'special.midnight': 'Midnight', 'special.preview': 'Preview', 'special.rerelease': 'Re-release', 'special.festival': 'Festival',
+    'mv.card.seat': 'Cinema and seats', 'mv.cinema': 'Cinema', 'ph.cinema': 'Cinema name or address', 'mv.hall': 'Screen', 'ph.hall': 'Screen 5',
+    'mv.lang': 'Language', 'ph.lang': 'English, subtitles', 'mv.seats': 'Seats', 'ph.seats': 'F12, press Enter', 'mv.formats': 'Format',
+    'mv.formatList': ['IMAX', 'Dolby Cinema', '3D', '4DX', '70mm', '2D'],
+    'mv.card.with': 'Watched with', 'mv.card.price': 'Price', 'mv.price': 'Amount',
+    'mv.err.title': 'Enter the film title.', 'mv.err.long': 'At most {n} characters.', 'mv.err.chip': 'Each can be at most {n} characters.',
+    'tk.date': 'DATE', 'tk.time': 'TIME', 'tk.hall': 'SCREEN', 'tk.seats': 'SEATS', 'tk.seat': 'SEAT', 'tk.with': 'With {list}',
+    'filter.all': 'All', 'filter.receipt': 'Receipts', 'filter.movie': 'Movies',
+    'home.title': 'Add to Home Screen', 'home.dismiss': 'Dismiss',
+    'home.ios': "Opened from the Home Screen, your receipts won't be cleared by Safari after a while without visits. In Safari, tap Share, then Add to Home Screen.",
+    'home.other': 'Opened from the Home Screen, your receipts are less likely to be cleared by the browser. In the browser menu, choose Add to Home Screen or Install app.',
+    'backup.title': 'Backup', 'backup.export': 'Export backup', 'backup.import': 'Restore from backup', 'backup.file': 'receipts-backup',
+    'backup.never': 'No backup yet. Export one before you switch phones or clear browser data.', 'backup.last': 'Last backup: {when}',
+    'backup.newer': 'Last backup: {when}, {n} added since', 'backup.restoreOnly': 'If you have a backup file, restore it here.',
+    'backup.saved': 'Backup saved', 'backup.exportFail': "Couldn't export the backup. Try again.", 'backup.badFile': "That isn't a receipts backup file.",
+    'backup.nothing': 'Everything in that backup is already here.', 'backup.importFail': "Couldn't restore. Storage may be full.",
+    'backup.restored': 'Restored {n}', 'backup.restoredSkip': 'Restored {n}, skipped {m} already here',
   },
 };
 const LANGS = { zh: '中文', en: 'English' };
@@ -689,7 +759,7 @@ function splitNames(raw) { return String(raw || '').split(/[,，、;；\s]+/).ma
 function recentNames() {
   const seen = new Set(), out = [];
   for (const r of state.receipts.slice().sort((a, b) => b.createdAt - a.createdAt)) {
-    for (const p of participantsOf(r)) if (!seen.has(p.name)) { seen.add(p.name); out.push(p.name); }
+    for (const name of participantsOf(r).map((p) => p.name).concat(r.companions || [])) if (!seen.has(name)) { seen.add(name); out.push(name); }
   }
   return out;
 }
@@ -814,6 +884,7 @@ function newDraft(style) {
 
 // Receipts and drafts saved by earlier versions had one merchant and one amount, and no style.
 function upgradeReceipt(r) {
+  if (r.kind === 'movie') return Object.assign({ seats: [], formats: [], companions: [], special: '', time: '', titleEn: '', cinema: '', hall: '', language: '', priceMinor: null }, r);
   const out = Object.assign({ style: 'thermal', people: null, currency: 'USD' }, r);
   if (!Array.isArray(r.items)) Object.assign(out, {
     title: r.merchant, items: [{ name: '', amountMinor: r.amountMinor }], totalMinor: r.amountMinor,
@@ -838,16 +909,19 @@ function upgradeDraft(d) {
 function loadState() {
   try {
     const raw = JSON.parse(localStorage.getItem(KEY));
-    if (raw && Array.isArray(raw.receipts)) return { receipts: raw.receipts.map(upgradeReceipt), draft: upgradeDraft(raw.draft) };
+    if (raw && Array.isArray(raw.receipts)) return { receipts: raw.receipts.map(upgradeReceipt), draft: upgradeDraft(raw.draft),
+      movieDraft: upgradeMovieDraft(raw.movieDraft), newKind: raw.newKind === 'movie' ? 'movie' : 'receipt' };
   } catch (e) { /* unreadable storage: start empty */ }
-  return { receipts: [], draft: newDraft() };
+  return { receipts: [], draft: newDraft(), movieDraft: newMovieDraft(), newKind: 'receipt' };
 }
 
 let state = loadState();
 
+// Saves a change to the stored state; parts not mentioned (the other draft, the new-page kind) are kept.
 function write(next) {
-  localStorage.setItem(KEY, JSON.stringify(next));
-  state = next;
+  const full = Object.assign({}, state, next);
+  localStorage.setItem(KEY, JSON.stringify(full));
+  state = full;
 }
 
 // Newest start date first; within a day, newest created first.
@@ -883,22 +957,219 @@ function commit(input) {
   }, input);
   if (!existing && receipt.pay) savePayPref(receipt.pay);
   if (!existing) saveCurrencyPref(receipt.currency);
+  requestPersist();
   // The next draft starts in the style just used.
   write({ receipts: sorted(existing ? state.receipts : state.receipts.concat(receipt)), draft: newDraft(receipt.style) });
   return receipt;
 }
 
 function removeReceipt(id) {
-  write({ receipts: state.receipts.filter((r) => r.id !== id), draft: state.draft });
+  const r = state.receipts.find((x) => x.id === id);
+  write({ receipts: state.receipts.filter((x) => x.id !== id) });
   thumbs.delete(id);
+  // A ticket's poster goes with it.
+  if (r && r.posterId) { deleteImage(r.posterId); posterCache.delete(r.posterId); }
 }
 
 function restyleReceipt(id, style) {
   updateReceipt(id, { style });
 }
 function updateReceipt(id, change) {
-  write({ receipts: state.receipts.map((r) => r.id === id ? Object.assign({}, r, change) : r), draft: state.draft });
+  write({ receipts: state.receipts.map((r) => r.id === id ? Object.assign({}, r, change) : r) });
   thumbs.delete(id);
+}
+
+/* ---------- Movie tickets ---------- */
+// A movie ticket is a keepsake, not a bill: no split, no payment. It lives in the same list as
+// receipts with kind: 'movie'. Its poster is kept in IndexedDB (see below); the record keeps the
+// poster's ID, a small thumbnail for the list and the colours taken from the poster.
+
+const MOVIE_LIMITS = { title: 60, titleEn: 60, cinema: 60, hall: 20, language: 20, seat: 8, seats: 12, with: 12 };
+const SPECIALS = ['premiere', 'midnight', 'preview', 'rerelease', 'festival'];
+const SPECIAL_EN = { premiere: 'PREMIERE', midnight: 'MIDNIGHT', preview: 'PREVIEW', rerelease: 'RE-RELEASE', festival: 'FESTIVAL' };
+const formatOptions = () => t('mv.formatList');
+
+function newMovieDraft() {
+  const id = (crypto.randomUUID && crypto.randomUUID()) ||
+    Array.from(crypto.getRandomValues(new Uint8Array(16)), (b) => b.toString(16).padStart(2, '0')).join('');
+  return { id, title: '', titleEn: '', date: null, time: '', cinema: '', hall: '', language: '', seats: [], formats: [],
+    special: '', companions: [], price: '', currency: loadCurrencyPref(), posterId: null, thumb: null, colors: null };
+}
+function upgradeMovieDraft(d) {
+  return d && d.id ? Object.assign(newMovieDraft(), d) : newMovieDraft();
+}
+function saveMovieDraft(d) {
+  state.movieDraft = d;
+  try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) { /* keep in memory */ }
+}
+function patchMovie(change) {
+  const next = Object.assign({}, state.movieDraft);
+  change(next);
+  saveMovieDraft(next);
+}
+
+function validateMovie(d) {
+  const errors = {};
+  const tooLong = (s, n) => len(s) > n;
+  const title = d.title.trim();
+  if (!title) errors['mv-title'] = t('mv.err.title');
+  else if (tooLong(title, MOVIE_LIMITS.title)) errors['mv-title'] = t('mv.err.long', { n: MOVIE_LIMITS.title });
+  const titleEn = d.titleEn.trim();
+  if (tooLong(titleEn, MOVIE_LIMITS.titleEn)) errors['mv-titleEn'] = t('mv.err.long', { n: MOVIE_LIMITS.titleEn });
+  const date = d.date || todayISO();
+  if (!isValidISO(date)) errors['mv-date'] = t('err.date');
+  const time = /^\d{2}:\d{2}$/.test(d.time || '') ? d.time : '';
+  const cinema = d.cinema.trim(), hall = d.hall.trim(), language = d.language.trim();
+  if (tooLong(cinema, MOVIE_LIMITS.cinema)) errors['mv-cinema'] = t('mv.err.long', { n: MOVIE_LIMITS.cinema });
+  if (tooLong(hall, MOVIE_LIMITS.hall)) errors['mv-hall'] = t('mv.err.long', { n: MOVIE_LIMITS.hall });
+  if (tooLong(language, MOVIE_LIMITS.language)) errors['mv-language'] = t('mv.err.long', { n: MOVIE_LIMITS.language });
+  const code = CURRENCIES[d.currency] ? d.currency : 'USD';
+  let priceMinor = null;
+  if (String(d.price || '').trim()) {
+    const p = parseAmount(d.price, code);
+    if (p.error) errors['mv-price'] = amountError(p.error, code);
+    else priceMinor = p.minor;
+  }
+  if (Object.keys(errors).length) return { errors };
+  return { errors, input: {
+    kind: 'movie', title, titleEn, purchaseDate: date, endDate: null, time, cinema, hall, language,
+    seats: d.seats.slice(), formats: d.formats.slice(), special: SPECIALS.includes(d.special) ? d.special : '',
+    companions: d.companions.slice(), priceMinor, currency: code,
+    posterId: d.posterId || null, thumb: d.thumb || null, colors: d.colors || null, style: 'poster',
+  } };
+}
+
+// The ticket keeps its own number and print time, like receipts.
+function commitMovie(input) {
+  if (FAIL_SAVE) throw new Error('simulated save failure');
+  const id = state.movieDraft.id;
+  const existing = state.receipts.find((r) => r.id === id);
+  const now = new Date();
+  const ticket = existing || Object.assign({
+    id, createdAt: now.getTime(), no: receiptNo(id, now.getTime()), templateVersion: 1,
+    printedAt: String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0'),
+  }, input);
+  if (!existing) saveCurrencyPref(ticket.currency);
+  requestPersist();
+  write({ receipts: sorted(existing ? state.receipts : state.receipts.concat(ticket)), movieDraft: newMovieDraft() });
+  return ticket;
+}
+
+// Whether the showtime has passed (the end of the day when no time was given); the stub is then punched.
+function movieWatched(r) {
+  const [y, m, d] = r.purchaseDate.split('-').map(Number);
+  const [hh, mm] = r.time ? r.time.split(':').map(Number) : [23, 59];
+  return new Date(y, m - 1, d, hh, mm).getTime() < Date.now();
+}
+
+/* Poster storage: IndexedDB holds the poster images, keyed by poster ID. Each is stored as
+   { type, buf } (an ArrayBuffer) rather than a Blob, which older Safari versions failed to store. */
+const IDB_NAME = 'receipts-images', IDB_STORE = 'images';
+let dbPromise = null;
+function openDB() {
+  dbPromise = dbPromise || new Promise((resolve, reject) => {
+    const req = indexedDB.open(IDB_NAME, 1);
+    req.onupgradeneeded = () => req.result.createObjectStore(IDB_STORE);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => { dbPromise = null; reject(req.error); };
+  });
+  return dbPromise;
+}
+function idb(mode, fn) {
+  return openDB().then((db) => new Promise((resolve, reject) => {
+    const tx = db.transaction(IDB_STORE, mode);
+    const req = fn(tx.objectStore(IDB_STORE));
+    tx.oncomplete = () => resolve(req && req.result);
+    tx.onerror = () => reject(tx.error);
+    tx.onabort = () => reject(tx.error);
+  }));
+}
+async function putImage(id, blob) {
+  const buf = await blob.arrayBuffer();
+  return idb('readwrite', (st) => st.put({ type: blob.type, buf }, id));
+}
+async function getImage(id) {
+  const v = await idb('readonly', (st) => st.get(id));
+  return v ? new Blob([v.buf], { type: v.type }) : null;
+}
+const deleteImage = (id) => idb('readwrite', (st) => st.delete(id)).catch(() => {});
+
+// Decoded posters in memory, so tickets can be drawn synchronously once loaded.
+const posterCache = new Map();
+async function ensurePoster(id) {
+  if (!id) return null;
+  if (posterCache.has(id)) return posterCache.get(id);
+  const blob = await getImage(id);
+  if (!blob) return null;
+  const img = await loadImage(blob);
+  posterCache.set(id, img);
+  return img;
+}
+
+// A poster is centre-cropped to 2:3, scaled to at most 900 px wide and saved as JPEG (about
+// 120–180 KB); the original photo is not kept. A 96×144 thumbnail and the poster's colours are
+// kept on the ticket record.
+async function posterFromFile(file) {
+  const img = await loadImage(file);
+  const W0 = img.naturalWidth, H0 = img.naturalHeight;
+  let sw = W0, sh = H0;
+  if (sw / sh > 2 / 3) sw = sh * 2 / 3; else sh = sw * 3 / 2;
+  const sx = (W0 - sw) / 2, sy = (H0 - sh) / 2;
+  const draw = (w, h) => {
+    const c = document.createElement('canvas');
+    c.width = w; c.height = h;
+    const ctx = c.getContext('2d', { willReadFrequently: true });
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(img, sx, sy, sw, sh, 0, 0, w, h);
+    return c;
+  };
+  const outW = Math.max(60, Math.min(900, Math.round(sw)));
+  const big = draw(outW, Math.round(outW * 1.5));
+  const blob = await new Promise((res, rej) => big.toBlob((b) => b ? res(b) : rej(new Error('encode failed')), 'image/jpeg', 0.85));
+  const thumb = draw(96, 144).toDataURL('image/jpeg', 0.72);
+  const sample = draw(30, 45);
+  const colors = posterColors(sample.getContext('2d').getImageData(0, 0, 30, 45).data);
+  return { blob, thumb, colors };
+}
+
+// The poster's most prominent colour, favouring saturated mid tones over near-white and near-black,
+// turned into a palette: a pale paper tinted with it, a dark ink from it, and an accent.
+function posterColors(px) {
+  const buckets = new Map();
+  for (let i = 0; i < px.length; i += 4) {
+    const r = px[i], g = px[i + 1], b = px[i + 2];
+    const max = Math.max(r, g, b), min = Math.min(r, g, b);
+    const v = max / 255, s = max ? (max - min) / max : 0;
+    if (v < 0.12 || (v > 0.94 && s < 0.08)) continue;
+    const key = (r >> 5) * 64 + (g >> 5) * 8 + (b >> 5);
+    const w = 0.25 + s * (1 - Math.abs(v - 0.55));
+    const e = buckets.get(key) || { w: 0, r: 0, g: 0, b: 0 };
+    e.w += w; e.r += r * w; e.g += g * w; e.b += b * w;
+    buckets.set(key, e);
+  }
+  let best = null;
+  for (const e of buckets.values()) if (!best || e.w > best.w) best = e;
+  const base = best ? [best.r / best.w, best.g / best.w, best.b / best.w].map(Math.round) : [138, 90, 43];
+  // Keep the poster's hue; set saturation and lightness per role so any poster gives a readable,
+  // clearly tinted ticket. Near-grey posters get a warm neutral.
+  const [r, g, b] = base.map((v) => v / 255);
+  const max = Math.max(r, g, b), min = Math.min(r, g, b), l = (max + min) / 2;
+  let h = 0, sat = 0;
+  if (max !== min) {
+    const dd = max - min;
+    sat = l > 0.5 ? dd / (2 - max - min) : dd / (max + min);
+    h = max === r ? (g - b) / dd + (g < b ? 6 : 0) : max === g ? (b - r) / dd + 2 : (r - g) / dd + 4;
+    h *= 60;
+  }
+  if (sat < 0.08) { h = 38; sat = 0.15; }
+  const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+  const hsl = (sv, lv) => 'hsl(' + Math.round(h) + ' ' + Math.round(sv * 100) + '% ' + Math.round(lv * 100) + '%)';
+  return {
+    paper: hsl(clamp(sat * 0.55, 0.18, 0.4), 0.93),
+    ink: hsl(clamp(sat * 0.5, 0.12, 0.35), 0.13),
+    muted: hsl(clamp(sat * 0.3, 0.08, 0.2), 0.42),
+    accent: hsl(clamp(sat, 0.4, 0.75), 0.36),
+  };
 }
 
 /* ---------- Photo ---------- */
@@ -1251,6 +1522,7 @@ function paperPath(ctx, T, H, rand, notchY) {
 }
 
 function drawReceipt(r, scale) {
+  if (r.kind === 'movie') return drawTicket(r, scale);
   const money = (m) => formatMoney(m, r.currency);
   scale = scale || Math.min(3, Math.max(2, window.devicePixelRatio || 1));
   const T = THEMES[r.style] || THEMES.thermal;
@@ -1636,7 +1908,201 @@ function drawReceipt(r, scale) {
   return canvas;
 }
 
+// The movie ticket stub, drawn on a canvas like receipts: poster on top, a perforation with two
+// notches, the details, then the stub with the seat in large type. Colours come from the poster.
+const TICKET_SERIF = '"Didot", "Bodoni 72", "Bodoni MT", "Songti SC", "STSong", "Noto Serif CJK SC", Georgia, serif';
+const TICKET_SANS = SANS;
+const ADMIT_WORDS = ['', 'ONE', 'TWO', 'THREE', 'FOUR', 'FIVE', 'SIX', 'SEVEN', 'EIGHT', 'NINE', 'TEN'];
+
+function drawTicket(r, scale) {
+  scale = scale || Math.min(3, Math.max(2, window.devicePixelRatio || 1));
+  const C = Object.assign({ paper: '#f6f1e7', ink: '#2a2522', muted: '#8a7f72', accent: '#8a5a2b' }, r.colors || {});
+  const poster = r.posterId ? posterCache.get(r.posterId) : null;
+  const measure = document.createElement('canvas').getContext('2d');
+  const PX = 22, inner = W - PX * 2;
+  const ops = [];
+  const textOp = (str, font, x, y, opts) => ops.push(Object.assign({ t: 'text', str, font, x, y, align: 'left', color: C.ink, spacing: 0 }, opts || {}));
+
+  // Poster, 2:3, inset from the edges.
+  const P = { x: 12, y: 12, w: W - 24, h: Math.round((W - 24) * 1.5) };
+  let y = P.y + P.h + 24;
+
+  // Title (and original title).
+  const titleFont = 'bold 24px ' + TICKET_SERIF;
+  measure.font = titleFont;
+  for (const ln of wrap(measure, r.title, inner)) { textOp(ln, titleFont, PX, y + 12); y += 30; }
+  if (r.titleEn) {
+    const f = '600 10px ' + TICKET_SANS;
+    measure.font = f;
+    for (const ln of wrap(measure, r.titleEn.toUpperCase(), inner - 20)) { textOp(ln, f, PX, y + 6, { color: C.muted, spacing: 1.6 }); y += 15; }
+  }
+
+  // Format and language tags.
+  const tags = r.formats.concat(r.language ? [r.language] : []);
+  if (tags.length) {
+    y += 10;
+    const f = '600 10.5px ' + TICKET_SANS;
+    measure.font = f;
+    let x = PX;
+    for (const tag of tags) {
+      const w = measure.measureText(tag).width + 14;
+      if (x + w > W - PX) { x = PX; y += 24; }
+      ops.push({ t: 'pill', x, y, w, h: 19, str: tag, font: f });
+      x += w + 6;
+    }
+    y += 19;
+  }
+
+  // Details in two columns: date, time, screen, seats.
+  const cells = [[t('tk.date'), displayDate(r.purchaseDate), MONO], r.time ? [t('tk.time'), r.time, MONO] : null,
+    r.hall ? [t('tk.hall'), r.hall, TICKET_SANS] : null, r.seats.length ? [t('tk.seats'), r.seats.join(' · '), MONO] : null].filter(Boolean);
+  y += 18;
+  cells.forEach((c, i) => {
+    const x = PX + (i % 2) * (inner / 2);
+    const rowY = y + Math.floor(i / 2) * 40;
+    textOp(c[0], '600 9.5px ' + TICKET_SANS, x, rowY + 5, { color: C.muted, spacing: 1.2 });
+    measure.font = '15px ' + c[2];
+    let v = c[1];
+    while (v.length > 2 && measure.measureText(v).width > inner / 2 - 8) v = v.slice(0, -2) + '…';
+    textOp(v, '15px ' + c[2], x, rowY + 24);
+  });
+  y += Math.ceil(cells.length / 2) * 40;
+
+  if (r.cinema) {
+    const f = '11.5px ' + TICKET_SANS;
+    measure.font = f;
+    for (const ln of wrap(measure, r.cinema, inner)) { textOp(ln, f, PX, y + 6, { color: C.muted }); y += 17; }
+  }
+  if (r.companions.length) {
+    const f = '11.5px ' + TICKET_SANS;
+    measure.font = f;
+    for (const ln of wrap(measure, t('tk.with', { list: r.companions.join(t('list.sep')) }), inner)) { textOp(ln, f, PX, y + 6); y += 17; }
+  }
+
+  // Perforation, then the stub.
+  y += 14;
+  const perfY = y;
+  y += 22;
+  const admit = Math.max(1, r.seats.length || r.companions.length + 1);
+  const stubTop = y;
+  textOp('ADMIT ' + (ADMIT_WORDS[admit] || admit), '700 11px ' + TICKET_SANS, PX, y + 6, { color: C.accent, spacing: 3 });
+  textOp(displayDate(r.purchaseDate) + (r.time ? '  ' + r.time : ''), '10.5px ' + MONO, PX, y + 24, { color: C.muted });
+  if (r.seats.length) {
+    textOp(t('tk.seat'), '600 9px ' + TICKET_SANS, W - PX, y + 4, { align: 'right', color: C.muted, spacing: 1.5 });
+    // First seat in large type; any others as a small "+1" after it.
+    let right = W - PX;
+    if (r.seats.length > 1) {
+      const more = '+' + (r.seats.length - 1);
+      measure.font = '600 13px ' + MONO;
+      textOp(more, '600 13px ' + MONO, right, y + 32, { align: 'right', color: C.muted });
+      right -= measure.measureText(more).width + 5;
+    }
+    textOp(r.seats[0], 'bold 26px ' + MONO, right, y + 28, { align: 'right' });
+  }
+  y += 48;
+  const money = r.priceMinor != null ? formatMoney(r.priceMinor, r.currency) + '  ·  ' : '';
+  textOp(money + 'NO. ' + (r.no || receiptNo(r.id, r.createdAt)), '8.5px ' + MONO, PX, y, { color: C.muted, spacing: 0.8 });
+  y += 18;
+  const H = Math.ceil(y);
+
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.round(W * scale);
+  canvas.height = Math.round(H * scale);
+  canvas.style.width = W + 'px';
+  canvas.style.height = H + 'px';
+  canvas.className = 'receipt ticket';
+  const ctx = canvas.getContext('2d');
+  ctx.scale(scale, scale);
+
+  // Ticket outline: rounded corners, a notch on each side at the perforation, and once the film has
+  // been seen, a punched hole in the stub.
+  const notch = 9;
+  ctx.beginPath();
+  ctx.roundRect ? ctx.roundRect(0, 0, W, H, 14) : ctx.rect(0, 0, W, H);
+  ctx.moveTo(notch, perfY); ctx.arc(0, perfY, notch, 0, Math.PI * 2);
+  ctx.moveTo(W + notch, perfY); ctx.arc(W, perfY, notch, 0, Math.PI * 2);
+  const hole = { x: Math.round(W * 0.6), y: stubTop + 8 };
+  if (movieWatched(r)) { ctx.moveTo(hole.x + 7, hole.y); ctx.arc(hole.x, hole.y, 7, 0, Math.PI * 2); }
+  ctx.clip('evenodd');
+  ctx.fillStyle = C.paper; ctx.fillRect(0, 0, W, H);
+  // A faint paper grain, the same for a given ticket.
+  const rand = rng(hash32(r.id));
+  for (let i = 0; i < W * H / 60; i++) {
+    ctx.fillStyle = rand() < 0.5 ? 'rgba(0,0,0,0.035)' : 'rgba(255,255,255,0.25)';
+    ctx.fillRect(rand() * W, rand() * H, 1, 0.6);
+  }
+
+  // Poster, or the title on the accent colour when there is none.
+  ctx.save();
+  ctx.beginPath();
+  ctx.roundRect ? ctx.roundRect(P.x, P.y, P.w, P.h, 8) : ctx.rect(P.x, P.y, P.w, P.h);
+  ctx.clip();
+  if (poster) {
+    ctx.drawImage(poster, P.x, P.y, P.w, P.h);
+  } else {
+    ctx.fillStyle = C.accent; ctx.fillRect(P.x, P.y, P.w, P.h);
+    ctx.fillStyle = C.paper; ctx.font = 'bold 30px ' + TICKET_SERIF; ctx.textBaseline = 'alphabetic';
+    let ty = P.y + P.h - 24;
+    const lines = wrap(ctx, r.title, P.w - 36);
+    for (let i = lines.length - 1; i >= 0; i--) { ctx.fillText(lines[i], P.x + 18, ty); ty -= 36; }
+  }
+  ctx.strokeStyle = 'rgba(0,0,0,0.08)'; ctx.lineWidth = 1;
+  ctx.strokeRect(P.x + 0.5, P.y + 0.5, P.w - 1, P.h - 1);
+  ctx.restore();
+
+  // Special screening badge on the poster's top-left corner.
+  if (r.special) {
+    const label = lang === 'zh' ? t('special.' + r.special) + ' · ' + SPECIAL_EN[r.special] : SPECIAL_EN[r.special];
+    ctx.font = '700 10px ' + TICKET_SANS;
+    if ('letterSpacing' in ctx) ctx.letterSpacing = '1.5px';
+    const bw = ctx.measureText(label).width + 18;
+    ctx.fillStyle = 'rgba(15,15,15,0.62)';
+    ctx.beginPath(); ctx.roundRect ? ctx.roundRect(P.x + 10, P.y + 10, bw, 22, 11) : ctx.rect(P.x + 10, P.y + 10, bw, 22); ctx.fill();
+    ctx.fillStyle = '#fff'; ctx.textBaseline = 'middle'; ctx.fillText(label, P.x + 19, P.y + 21.5);
+    if ('letterSpacing' in ctx) ctx.letterSpacing = '0px';
+  }
+
+  // Perforation line.
+  ctx.strokeStyle = C.muted; ctx.globalAlpha = 0.55; ctx.lineWidth = 1.2; ctx.setLineDash([3, 4]);
+  ctx.beginPath(); ctx.moveTo(notch + 6, perfY); ctx.lineTo(W - notch - 6, perfY); ctx.stroke();
+  ctx.setLineDash([]); ctx.globalAlpha = 1;
+
+  ctx.textBaseline = 'middle';
+  for (const op of ops) {
+    if ('letterSpacing' in ctx) ctx.letterSpacing = (op.spacing || 0) + 'px';
+    if (op.t === 'pill') {
+      ctx.strokeStyle = C.ink; ctx.globalAlpha = 0.7; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.roundRect ? ctx.roundRect(op.x + 0.5, op.y + 0.5, op.w - 1, op.h - 1, 4) : ctx.rect(op.x, op.y, op.w, op.h); ctx.stroke();
+      ctx.globalAlpha = 1; ctx.fillStyle = C.ink; ctx.font = op.font; ctx.textAlign = 'center';
+      ctx.fillText(op.str, op.x + op.w / 2, op.y + op.h / 2 + 0.5);
+      continue;
+    }
+    ctx.font = op.font; ctx.fillStyle = op.color; ctx.textAlign = op.align;
+    ctx.fillText(op.str, op.x, op.y);
+  }
+  if ('letterSpacing' in ctx) ctx.letterSpacing = '0px';
+
+  canvas.setAttribute('role', 'img');
+  canvas.setAttribute('aria-label', movieSpoken(r));
+  return canvas;
+}
+
+function movieSpoken(r) {
+  const parts = [t('sp.movie'), r.title];
+  if (r.titleEn) parts.push(r.titleEn);
+  if (r.special) parts.push(t('special.' + r.special));
+  parts.push(displayDate(r.purchaseDate) + (r.time ? ' ' + r.time : ''));
+  if (r.cinema) parts.push(r.cinema);
+  if (r.hall) parts.push(r.hall);
+  if (r.seats.length) parts.push(t('tk.seats') + ' ' + r.seats.join(t('list.sep')));
+  if (r.formats.length || r.language) parts.push(r.formats.concat(r.language ? [r.language] : []).join(t('list.sep')));
+  if (r.companions.length) parts.push(t('tk.with', { list: r.companions.join(t('list.sep')) }));
+  if (r.priceMinor != null) parts.push(formatMoney(r.priceMinor, r.currency));
+  return parts.join(t('sp.sep'));
+}
+
 function spokenText(r) {
+  if (r.kind === 'movie') return movieSpoken(r);
   const money = (m) => formatMoney(m, r.currency);
   const parts = [t('sp.receipt'), r.title, displayRange(r.purchaseDate, r.endDate)];
   if (r.location) parts.push(r.location);
@@ -1775,10 +2241,10 @@ function langButton() {
 }
 
 // Currency for this receipt, in the head of the spending card. Amounts are not converted.
-function currencyPicker(d) {
+function currencyPicker(d, onPick) {
   const code = CURRENCIES[d.currency] ? d.currency : 'USD';
   const select = el('select', { class: 'cur-select', id: 'i-currency', 'aria-label': t('aria.currency'),
-    onchange: (e) => { patchDraft((n) => { n.currency = e.target.value; }); renderForm(); } },
+    onchange: (e) => { if (onPick) onPick(e.target.value); else { patchDraft((n) => { n.currency = e.target.value; }); renderForm(); } } },
     CURRENCY_ORDER.map((k) => el('option', { value: k, text: k + ' ' + CURRENCIES[k].symbol + ' · ' + t('cur.' + k) })));
   select.value = code;
   // The closed picker shows just the code and symbol, e.g. "CNY ¥".
@@ -1803,6 +2269,7 @@ function optionalLabel(text, forId) {
 }
 
 function renderForm(focusId) {
+  if (state.newKind === 'movie') return renderMovieForm(focusId);
   setChrome(t('form.title'), 'new', null, langButton());
   const d = state.draft;
   if (d.location || d.note) showMore = true;
@@ -1820,6 +2287,7 @@ function renderForm(focusId) {
 
   // The form reads top to bottom as: what and when, what it cost, who shares it, how it looks.
   const form = el('form', { novalidate: '', onsubmit: onPrint, onkeydown: onFormKey }, [
+    kindSwitch(),
     el('section', { class: 'card' }, [
       field('title', t('f.title'), el('div', { class: 'box' },
         input('title', { type: 'text', value: d.title, enterkeyhint: 'next' }))),
@@ -1869,6 +2337,199 @@ function renderForm(focusId) {
   refresh();
   window.scrollTo(0, keepScroll);
   if (focusId && $(focusId)) $(focusId).focus();
+}
+
+// The 小票 / 电影票 switch at the top of the new page.
+function kindSwitch() {
+  const kind = state.newKind === 'movie' ? 'movie' : 'receipt';
+  return el('div', { class: 'seg kind-seg', role: 'radiogroup', 'aria-label': t('aria.kind') }, ['receipt', 'movie'].map((k) =>
+    el('button', { type: 'button', role: 'radio', 'aria-checked': String(k === kind), text: t('kind.' + k),
+      onclick: () => {
+        if (k === kind) return;
+        state.newKind = k;
+        try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) { /* this session only */ }
+        attempted = false;
+        window.scrollTo(0, 0);
+        renderForm();
+      } })));
+}
+
+// Chips with a text box: seats (F12, F13) and companions. Enter, comma or space adds.
+function chipInput(id, values, placeholder, maxLen, onChange, suggestions) {
+  const add = (raw) => {
+    const add = splitNames(raw);
+    if (!add.length) return;
+    if (add.some((n) => len(n) > maxLen)) { toast(t('mv.err.chip', { n: maxLen })); return; }
+    onChange(Array.from(new Set(values.concat(add))).slice(0, MOVIE_LIMITS.seats));
+    renderForm(id);
+  };
+  return el('div', {}, [
+    el('div', { class: 'chips' }, [
+      ...values.map((v, i) => el('span', { class: 'chip' }, [v,
+        el('button', { type: 'button', 'aria-label': t('aria.removeName', { name: v }), text: '×',
+          onclick: () => { onChange(values.filter((_, j) => j !== i)); renderForm(id); } })])),
+      el('input', { id, type: 'text', autocomplete: 'off', enterkeyhint: 'done', placeholder: values.length ? t('names.phMore') : placeholder,
+        onkeydown: (e) => { if (e.key === 'Enter' && !e.isComposing) { e.preventDefault(); add(e.target.value); } },
+        onchange: (e) => { if (e.target.value.trim()) add(e.target.value); } }),
+    ]),
+    suggestions && suggestions.length ? el('div', { class: 'suggest' }, suggestions.map((n) =>
+      el('button', { type: 'button', text: '+ ' + n, onclick: () => add(n) }))) : null,
+  ]);
+}
+
+function renderMovieForm(focusId) {
+  setChrome(t('mv.formTitle'), 'new', null, langButton());
+  const d = state.movieDraft;
+  const keepScroll = window.scrollY;
+  const field = (key, label, control) => el('div', { class: 'field', id: 'f-' + key }, [
+    el('div', { class: 'head' }, typeof label === 'string' ? el('label', { for: 'i-' + key, text: label }) : label),
+    control,
+    el('p', { class: 'error', id: 'e-' + key, role: 'alert', hidden: '' }),
+  ]);
+  const text = (key, prop, attrs) => el('div', { class: 'box' }, el('input', Object.assign({
+    id: 'i-' + key, type: 'text', autocomplete: 'off', value: d[prop] || '', 'aria-describedby': 'e-' + key,
+    oninput: (e) => { patchMovie((n) => { n[prop] = e.target.value; }); refreshMovie(); },
+  }, attrs)));
+
+  // Format: several may apply (IMAX + 3D). Special screening: at most one; tap again to clear.
+  const formatChips = el('div', { class: 'presets wrap' }, formatOptions().map((f) =>
+    el('button', { type: 'button', text: f, 'aria-pressed': String(d.formats.includes(f)),
+      onclick: () => { patchMovie((n) => { n.formats = n.formats.includes(f) ? n.formats.filter((x) => x !== f) : n.formats.concat(f); }); renderForm(); } })));
+  const specialChips = el('div', { class: 'presets wrap' }, SPECIALS.map((k) =>
+    el('button', { type: 'button', text: t('special.' + k), 'aria-pressed': String(d.special === k),
+      onclick: () => { patchMovie((n) => { n.special = n.special === k ? '' : k; }); renderForm(); } })));
+
+  const form = el('form', { novalidate: '', onsubmit: onPrintMovie, onkeydown: (e) => {
+    if (e.key === 'Enter' && e.target.tagName === 'INPUT' && !e.isComposing) e.preventDefault();
+  } }, [
+    kindSwitch(),
+    el('section', { class: 'card' }, [
+      el('div', { class: 'card-head' }, el('h2', { text: t('mv.poster') })),
+      renderPosterPick(d),
+    ]),
+    el('section', { class: 'card' }, [
+      el('div', { class: 'card-head' }, el('h2', { text: t('mv.card.film') })),
+      field('mv-title', t('mv.title'), text('mv-title', 'title', { enterkeyhint: 'next' })),
+      field('mv-titleEn', optionalLabel(t('mv.titleEn'), 'i-mv-titleEn'), text('mv-titleEn', 'titleEn', { autocapitalize: 'words' })),
+      el('div', { class: 'two' }, [
+        field('mv-date', t('mv.date'), el('div', { class: 'box' }, el('input', {
+          id: 'i-mv-date', type: 'date', value: d.date || todayISO(), 'aria-describedby': 'e-mv-date',
+          oninput: (e) => { patchMovie((n) => { n.date = e.target.value || null; }); refreshMovie(); } }))),
+        field('mv-time', optionalLabel(t('mv.time'), 'i-mv-time'), el('div', { class: 'box' }, el('input', {
+          id: 'i-mv-time', type: 'time', value: d.time || '',
+          oninput: (e) => { patchMovie((n) => { n.time = e.target.value; }); } }))),
+      ]),
+      el('span', { class: 'sub-label', text: t('mv.special') }),
+      specialChips,
+    ]),
+    el('section', { class: 'card' }, [
+      el('div', { class: 'card-head' }, el('h2', { text: t('mv.card.seat') })),
+      field('mv-cinema', t('mv.cinema'), text('mv-cinema', 'cinema', { placeholder: t('ph.cinema') })),
+      el('div', { class: 'two' }, [
+        field('mv-hall', t('mv.hall'), text('mv-hall', 'hall', { placeholder: t('ph.hall') })),
+        field('mv-language', t('mv.lang'), text('mv-language', 'language', { placeholder: t('ph.lang') })),
+      ]),
+      el('label', { class: 'sub-label', for: 'i-mv-seats', text: t('mv.seats') }),
+      chipInput('i-mv-seats', d.seats, t('ph.seats'), MOVIE_LIMITS.seat, (v) => patchMovie((n) => { n.seats = v; })),
+      el('span', { class: 'sub-label', text: t('mv.formats') }),
+      formatChips,
+    ]),
+    el('section', { class: 'card' }, [
+      el('div', { class: 'card-head' }, el('h2', { text: t('mv.card.with') })),
+      chipInput('i-mv-with', d.companions, t('names.ph'), MOVIE_LIMITS.with, (v) => patchMovie((n) => { n.companions = v; }),
+        recentNames().filter((n) => !d.companions.includes(n)).slice(0, 8)),
+    ]),
+    el('section', { class: 'card' }, [
+      el('div', { class: 'card-head' }, [el('h2', { text: t('mv.card.price') }), currencyPicker(d, (code) => { patchMovie((n) => { n.currency = code; }); renderForm(); })]),
+      field('mv-price', optionalLabel(t('mv.price'), 'i-mv-price'), el('div', { class: 'box amount' }, [
+        el('span', { text: shortSymbol(d.currency), 'aria-hidden': 'true' }),
+        el('input', { id: 'i-mv-price', type: 'text', inputmode: 'decimal', autocomplete: 'off', value: d.price || '',
+          placeholder: cur(d.currency).dec ? '0.00' : '0', 'aria-describedby': 'e-mv-price',
+          oninput: (e) => { patchMovie((n) => { n.price = e.target.value; }); refreshMovie(); } }),
+      ])),
+    ]),
+    el('div', { class: 'print-bar' }, [
+      el('p', { class: 'save-error', id: 'save-error', role: 'alert', hidden: '' }),
+      el('button', { class: 'btn', id: 'print', type: 'submit', text: t('btn.print') }),
+    ]),
+  ]);
+  view.replaceChildren(form);
+  refreshMovie();
+  window.scrollTo(0, keepScroll);
+  if (focusId && $(focusId)) $(focusId).focus();
+}
+
+function refreshMovie() {
+  const errors = attempted ? validateMovie(state.movieDraft).errors : {};
+  view.querySelectorAll('.error[id^="e-"]').forEach((msg) => {
+    const key = msg.id.slice(2);
+    const text = errors[key];
+    const box = $('f-' + key);
+    if (box) box.classList.toggle('invalid', !!text);
+    if (text) { msg.textContent = text; msg.hidden = false; } else { msg.hidden = true; msg.textContent = ''; }
+  });
+}
+
+// Poster: upload once; it is stored straight away so a reload keeps it, and replaced or removed here.
+function renderPosterPick(d) {
+  const file = el('input', { type: 'file', accept: 'image/*', id: 'i-mv-poster', 'aria-label': t('mv.posterAdd'),
+    onchange: async (e) => {
+      const f = e.target.files && e.target.files[0];
+      e.target.value = '';
+      if (!f) return;
+      let p;
+      try { p = await posterFromFile(f); } catch (err) { toast(t('toast.posterBad')); return; }
+      const id = 'poster-' + ((crypto.randomUUID && crypto.randomUUID()) || Date.now() + '-' + Math.random().toString(16).slice(2));
+      try { await putImage(id, p.blob); } catch (err) { toast(t('toast.posterSaveFail')); return; }
+      const old = state.movieDraft.posterId;
+      patchMovie((n) => { n.posterId = id; n.thumb = p.thumb; n.colors = p.colors; });
+      if (old) { deleteImage(old); posterCache.delete(old); }
+      renderForm();
+    } });
+  if (!d.thumb) return el('label', { class: 'poster-pick' }, [file, el('span', { text: t('mv.posterAdd') })]);
+  return el('div', { class: 'poster-row' }, [
+    el('img', { src: d.thumb, alt: '', class: 'poster-thumb' }),
+    el('div', { class: 'poster-actions' }, [
+      el('label', { class: 'btn secondary small poster-change' }, [file, t('mv.posterChange')]),
+      el('button', { type: 'button', class: 'link quiet', text: t('mv.posterRemove'),
+        onclick: () => { const old = d.posterId; patchMovie((n) => { n.posterId = null; n.thumb = null; n.colors = null; }); if (old) { deleteImage(old); posterCache.delete(old); } renderForm(); } }),
+    ]),
+  ]);
+}
+
+function onPrintMovie(e) {
+  e.preventDefault();
+  if ($('print').disabled) return;
+  // Text typed into a chip box but not yet added still counts.
+  for (const [id, prop] of [['i-mv-seats', 'seats'], ['i-mv-with', 'companions']]) {
+    const v = $(id) && $(id).value.trim();
+    if (v) patchMovie((n) => { n[prop] = Array.from(new Set(n[prop].concat(splitNames(v)))); });
+  }
+  attempted = true;
+  const result = validateMovie(state.movieDraft);
+  if (!result.input) {
+    renderForm();
+    const first = Array.from(view.querySelectorAll('.error[id^="e-"]')).find((m) => !m.hidden);
+    const target = first && $('i-' + first.id.slice(2));
+    if (target) { target.focus(); target.scrollIntoView({ block: 'center', behavior: 'smooth' }); }
+    return;
+  }
+  const button = $('print');
+  button.disabled = true;
+  button.textContent = t('btn.printing');
+  // The poster is already stored; load it so the ticket can be drawn, then save the ticket.
+  ensurePoster(result.input.posterId).catch(() => null).then(() => {
+    try {
+      printed = commitMovie(result.input);
+      attempted = false;
+      renderStage();
+    } catch (err) {
+      button.disabled = false;
+      button.textContent = t('btn.print');
+      $('save-error').textContent = t('save.failed');
+      $('save-error').hidden = false;
+    }
+  });
 }
 
 // A whole-width row that opens an optional part of the form.
@@ -2416,6 +3077,19 @@ function renderStage() {
 
 /* Receipt folder */
 
+let listFilter = 'all';    // 全部 / 小票 / 电影, for this visit
+
+function listRow(r) {
+  return el('li', {}, el('a', { href: '#/r/' + r.id }, [
+    r.kind === 'movie'
+      ? el('div', { class: 'thumb poster' }, r.thumb ? el('img', { src: r.thumb, alt: '' }) : el('span', { class: 'poster-blank' }))
+      : el('div', { class: 'thumb' }, thumbnail(r)),
+    el('div', { class: 'meta' }, [el('b', { text: r.title }), el('span', { text: r.kind === 'movie'
+      ? [displayDate(r.purchaseDate), r.cinema].filter(Boolean).join(' · ') : displayRange(r.purchaseDate, r.endDate) })]),
+    el('div', { class: 'amt', text: r.kind === 'movie' ? (r.priceMinor != null ? formatMoney(r.priceMinor, r.currency) : '') : formatMoney(r.totalMinor, r.currency) }),
+  ]));
+}
+
 function renderList() {
   setChrome(t('list.title'), 'receipts', null, langButton());
   if (!state.receipts.length) {
@@ -2423,15 +3097,161 @@ function renderList() {
       el('h2', { text: t('list.empty') }),
       el('p', { text: t('list.emptyBody') }),
       el('a', { class: 'btn small', href: '#/new', text: t('list.first'), style: 'text-decoration:none;display:inline-block' }),
-    ]));
+    ]), backupCard());
     return;
   }
-  view.replaceChildren(el('ul', { class: 'list' }, sorted(state.receipts).map((r) =>
-    el('li', {}, el('a', { href: '#/r/' + r.id }, [
-      el('div', { class: 'thumb' }, thumbnail(r)),
-      el('div', { class: 'meta' }, [el('b', { text: r.title }), el('span', { text: displayRange(r.purchaseDate, r.endDate) })]),
-      el('div', { class: 'amt', text: formatMoney(r.totalMinor, r.currency) }),
-    ])))));
+  // The filter only appears once there are both receipts and movie tickets.
+  const hasMovies = state.receipts.some((r) => r.kind === 'movie');
+  const hasReceipts = state.receipts.some((r) => r.kind !== 'movie');
+  const both = hasMovies && hasReceipts;
+  if (!both) listFilter = 'all';
+  const shown = sorted(state.receipts).filter((r) => listFilter === 'all' || (listFilter === 'movie') === (r.kind === 'movie'));
+  view.replaceChildren(...[
+    homeHint(),
+    both ? el('div', { class: 'seg kind-seg', role: 'radiogroup', 'aria-label': t('aria.kind') }, ['all', 'receipt', 'movie'].map((k) =>
+      el('button', { type: 'button', role: 'radio', 'aria-checked': String(k === listFilter), text: t('filter.' + k),
+        onclick: () => { listFilter = k; renderList(); } }))) : null,
+    el('ul', { class: 'list' }, shown.map(listRow)),
+    backupCard(),
+  ].filter(Boolean));
+}
+
+/* Keeping data safe */
+
+// Ask the browser not to clear this site's storage under pressure. Silent: no prompt in Safari or
+// Chrome; it is granted or not from how the site is used. Asked at most once per visit.
+let persistAsked = false;
+function requestPersist() {
+  if (persistAsked || !(navigator.storage && navigator.storage.persist)) return;
+  persistAsked = true;
+  navigator.storage.persisted().then((yes) => yes || navigator.storage.persist()).catch(() => {});
+}
+
+// Posters no ticket (or the movie draft) refers to: uploaded but never printed, or left by an
+// interrupted delete. Removed shortly after the app opens.
+async function cleanupPosters() {
+  try {
+    const keys = await idb('readonly', (st) => st.getAllKeys());
+    const used = new Set(state.receipts.map((r) => r.posterId).filter(Boolean));
+    if (state.movieDraft && state.movieDraft.posterId) used.add(state.movieDraft.posterId);
+    for (const k of keys || []) if (!used.has(k)) deleteImage(k);
+  } catch (e) { /* IndexedDB unavailable: nothing to clean */ }
+}
+
+// Opening from the Home Screen keeps Safari from clearing the data after a week without visits.
+const HOME_HINT_KEY = 'receipts.homehint.v1';
+function isStandalone() {
+  return window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+}
+function homeHint() {
+  let dismissed = false;
+  try { dismissed = !!localStorage.getItem(HOME_HINT_KEY); } catch (e) { dismissed = true; }
+  if (dismissed || isStandalone() || !state.receipts.length) return null;
+  const ios = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  const card = el('section', { class: 'card hint-card' }, [
+    el('div', { class: 'card-head' }, [
+      el('h2', { text: t('home.title') }),
+      el('button', { type: 'button', class: 'icon-btn', 'aria-label': t('home.dismiss'), text: '×',
+        onclick: () => { try { localStorage.setItem(HOME_HINT_KEY, '1'); } catch (e) { /* this visit only */ } card.remove(); } }),
+    ]),
+    el('p', { text: t(ios ? 'home.ios' : 'home.other') }),
+  ]);
+  return card;
+}
+
+/* Backup: every receipt and ticket, with posters, in one JSON file. Restoring adds what is missing
+   and never overwrites or deletes what is already here. */
+const BACKUP_KEY = 'receipts.backup.v1';
+function lastBackupAt() {
+  try { return Number(localStorage.getItem(BACKUP_KEY)) || 0; } catch (e) { return 0; }
+}
+function backupCard() {
+  const last = lastBackupAt();
+  const newer = state.receipts.filter((r) => r.createdAt > last).length;
+  const d = new Date(last);
+  const when = last ? d.getFullYear() + '.' + String(d.getMonth() + 1).padStart(2, '0') + '.' + String(d.getDate()).padStart(2, '0') : '';
+  const status = !state.receipts.length ? t('backup.restoreOnly')
+    : !last ? t('backup.never')
+    : newer ? t('backup.newer', { when, n: newer }) : t('backup.last', { when });
+  const file = el('input', { type: 'file', accept: '.json,application/json', 'aria-label': t('backup.import'),
+    onchange: (e) => { const f = e.target.files && e.target.files[0]; e.target.value = ''; if (f) importBackup(f); } });
+  return el('section', { class: 'card backup-card' }, [
+    el('div', { class: 'card-head' }, el('h2', { text: t('backup.title') })),
+    el('p', { class: 'backup-status' + (state.receipts.length && (!last || newer) ? ' due' : ''), text: status }),
+    el('div', { class: 'actions' }, [
+      state.receipts.length ? el('button', { class: 'btn small', text: t('backup.export'), onclick: exportBackup }) : null,
+      el('label', { class: 'btn secondary small file-btn' }, [file, t('backup.import')]),
+    ]),
+  ]);
+}
+
+const blobToDataURL = (blob) => new Promise((resolve, reject) => {
+  const fr = new FileReader();
+  fr.onload = () => resolve(fr.result);
+  fr.onerror = () => reject(fr.error);
+  fr.readAsDataURL(blob);
+});
+
+// Phones get the share sheet (Save to Files, AirDrop, …); elsewhere the file downloads.
+async function saveFile(blob, name, doneMsg) {
+  const file = new File([blob], name, { type: blob.type });
+  if (window.matchMedia('(pointer: coarse)').matches && navigator.canShare && navigator.canShare({ files: [file] })) {
+    await navigator.share({ files: [file] });
+    return;
+  }
+  const url = URL.createObjectURL(blob);
+  const a = el('a', { href: url, download: name });
+  document.body.append(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 5000);
+  if (doneMsg) toast(doneMsg);
+}
+
+async function exportBackup() {
+  try {
+    const images = {};
+    for (const r of state.receipts) {
+      if (!r.posterId || images[r.posterId]) continue;
+      const blob = await getImage(r.posterId).catch(() => null);
+      if (blob) images[r.posterId] = await blobToDataURL(blob);
+    }
+    const data = { app: 'receipts', version: 1, exportedAt: Date.now(), receipts: state.receipts, images };
+    const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
+    await saveFile(blob, t('backup.file') + '-' + todayISO() + '.json', t('backup.saved'));
+    try { localStorage.setItem(BACKUP_KEY, String(Date.now())); } catch (e) { /* not critical */ }
+    if (location.hash === '#/receipts') renderList();
+  } catch (err) {
+    if (err && err.name === 'AbortError') return;
+    toast(t('backup.exportFail'));
+  }
+}
+
+async function importBackup(file) {
+  let data;
+  try { data = JSON.parse(await file.text()); } catch (e) { data = null; }
+  if (!data || data.app !== 'receipts' || !Array.isArray(data.receipts)) { toast(t('backup.badFile')); return; }
+  const have = new Set(state.receipts.map((r) => r.id));
+  const add = [];
+  for (const raw of data.receipts) {
+    if (!raw || typeof raw.id !== 'string' || have.has(raw.id) || typeof raw.purchaseDate !== 'string') continue;
+    const r = upgradeReceipt(raw);
+    if (r.posterId) {
+      const src = data.images && data.images[r.posterId];
+      try {
+        if (typeof src === 'string' && src.startsWith('data:image/')) await putImage(r.posterId, await (await fetch(src)).blob());
+        else r.posterId = null;
+      } catch (e) { r.posterId = null; }
+    }
+    add.push(r);
+    have.add(r.id);
+  }
+  const skipped = data.receipts.length - add.length;
+  if (!add.length) { toast(t('backup.nothing')); return; }
+  try {
+    write({ receipts: sorted(state.receipts.concat(add)) });
+  } catch (e) { toast(t('backup.importFail')); return; }
+  thumbs.clear();
+  toast(skipped ? t('backup.restoredSkip', { n: add.length, m: skipped }) : t('backup.restored', { n: add.length }));
+  if (location.hash === '#/receipts') renderList(); else location.hash = '#/receipts';
 }
 
 /* Detail */
@@ -2451,6 +3271,17 @@ function renderDetail(id, keepScroll) {
   setChrome('', 'receipts', back, el('div', { style: 'position:relative' }, [more, menu]));
 
   const y = window.scrollY;
+  if (r.kind === 'movie') {
+    if (r.posterId && !posterCache.has(r.posterId)) {
+      ensurePoster(r.posterId).then((img) => { if (img && location.hash === '#/r/' + r.id) renderDetail(r.id, true); }).catch(() => {});
+    }
+    view.replaceChildren(el('div', { class: 'detail' }, [
+      drawReceipt(r),
+      el('div', { class: 'actions' }, el('button', { class: 'btn small', text: t('btn.saveImage'), onclick: () => saveImage(r) })),
+    ]));
+    window.scrollTo(0, keepScroll ? y : 0);
+    return;
+  }
   view.replaceChildren(el('div', { class: 'detail' }, [
     drawReceipt(r),
     // A split receipt is usually about to be sent to the group, so its actions sit right below it.
@@ -2530,19 +3361,9 @@ document.addEventListener('click', () => document.querySelectorAll('.menu').forE
 
 async function saveImage(r) {
   try {
+    if (r.kind === 'movie') await ensurePoster(r.posterId).catch(() => null);
     const blob = await exportBlob(r);
-    const name = t('file.prefix') + '-' + r.purchaseDate + '.png';
-    const file = new File([blob], name, { type: 'image/png' });
-    // On phones the share sheet offers "Save Image"; elsewhere download the file.
-    if (window.matchMedia('(pointer: coarse)').matches && navigator.canShare && navigator.canShare({ files: [file] })) {
-      await navigator.share({ files: [file] });
-      return;
-    }
-    const url = URL.createObjectURL(blob);
-    const a = el('a', { href: url, download: name });
-    document.body.append(a); a.click(); a.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 5000);
-    toast(t('toast.imgSaved'));
+    await saveFile(blob, t('file.prefix') + '-' + r.purchaseDate + '.png', t('toast.imgSaved'));
   } catch (err) {
     if (err && err.name === 'AbortError') return;
     toast(t('toast.imgFail'));
@@ -2622,6 +3443,8 @@ window.addEventListener('storage', (e) => {
   if (location.hash === '#/receipts' || location.hash.startsWith('#/r/')) route();
 });
 route();
+if (state.receipts.length) requestPersist();
+setTimeout(cleanupPosters, 1500);
 
 if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
   navigator.serviceWorker.register('sw.js').catch(() => {});
