@@ -127,7 +127,6 @@
   .pay-row .box { flex: 1; padding: 0 12px; font-family: var(--mono); gap: 2px; }
   .pay-row .box span { color: var(--muted); font-size: 15px; }
   .pay-row .box input { font-size: 16px; padding: 10px 0; }
-  .pay-hint { margin: 6px 2px 0; }
   .pay.invalid .box { border-color: var(--error); }
   .progress { width: 100%; max-width: 340px; margin-top: 22px; background: var(--card); border-radius: 16px; padding: 14px 14px 12px; }
   .pg-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; }
@@ -1730,7 +1729,7 @@ function renderNames(d) {
   const names = d.names || [];
   const suggestions = recentNames().filter((n) => !names.includes(n)).slice(0, 8);
   return el('div', { class: 'names', id: 'f-names', hidden: '' }, [
-    el('div', { class: 'head' }, [optionalLabel('谁要转给你', 'i-names'), el('span', { class: 'counter', text: '不用填自己' })]),
+    el('div', { class: 'head' }, [optionalLabel('谁要转给你', 'i-names')]),
     el('div', { class: 'chips' }, [
       ...names.map((n, i) => el('span', { class: 'chip' }, [n,
         el('button', { type: 'button', 'aria-label': '移除 ' + n, text: '×',
@@ -1774,7 +1773,7 @@ function renderPay(d) {
         m.prefix ? el('span', { text: m.prefix, 'aria-hidden': 'true' }) : null,
         el('input', {
           id: 'i-pay', type: 'text', autocomplete: 'off', enterkeyhint: 'done', autocapitalize: 'off', spellcheck: 'false',
-          value: pay.handle, placeholder: m.placeholder, maxlength: '80', 'aria-label': m.name + ' 账号', 'aria-describedby': 'e-pay h-pay',
+          value: pay.handle, placeholder: m.placeholder, maxlength: '80', 'aria-label': m.name + ' 账号', 'aria-describedby': 'e-pay',
           oninput: (e) => { setPay({ handle: e.target.value }); refresh(); },
           // "@name" or a pasted profile link becomes just the name.
           onchange: (e) => {
@@ -1784,10 +1783,6 @@ function renderPay(d) {
         }),
       ]) : null,
     ]),
-    el('p', { class: 'counter pay-hint', id: 'h-pay', text: !m ? '选一个收款方式，小票上会印出付款码，朋友扫码就能付'
-      : pay.method === 'zelle' ? 'Zelle 没有付款链接，账号会以文字印在小票上'
-      : m.code ? '在' + m.name + '里打开“收付款 → 收款码”截图上传。截图只用来读出二维码，不会保存；收款码不带金额，朋友扫码后自己输入'
-      : '小票上印出付款码，扫码直接打开 ' + m.name + '，金额已填好' }),
     el('p', { class: 'error', id: 'e-pay', role: 'alert', hidden: '' }),
   ]);
 }
@@ -1796,7 +1791,7 @@ function renderPay(d) {
 function renderCodePick(pay, setPay) {
   const m = PAY_METHODS[pay.method];
   const ok = codeMethod(pay.code) === pay.method;
-  const file = el('input', { type: 'file', accept: 'image/*', id: 'i-pay', 'aria-describedby': 'e-pay h-pay',
+  const file = el('input', { type: 'file', accept: 'image/*', id: 'i-pay', 'aria-describedby': 'e-pay',
     'aria-label': (ok ? '更换' : '上传') + m.name + '收款码截图',
     onchange: async (e) => {
       const f = e.target.files && e.target.files[0];
