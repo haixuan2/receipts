@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#f1efea">
-<meta name="description" content="把一趟旅行、一天或一个瞬间的花费，印成一张值得留下的小票。">
+<meta name="description" id="meta-desc" content="把一趟旅行、一天或一个瞬间的花费，印成一张值得留下的小票。">
 <title>小票</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
@@ -190,6 +190,14 @@
   .card .photo-preview { margin-bottom: 12px; }
   .card .styles button { background: var(--fill); }
 
+  .lang-btn { display: inline-flex; align-items: center; gap: 4px; font-size: 14px; color: var(--muted); }
+  .menu button[role="menuitemradio"] { display: flex; justify-content: space-between; align-items: center; }
+  .menu .tick { font-weight: 700; }
+  .cur-pick { position: relative; display: inline-flex; align-items: center; gap: 4px; background: var(--fill); border-radius: 999px; padding: 5px 26px 5px 12px; font-size: 14px; font-weight: 650; font-family: var(--mono); }
+  .cur-pick::after { content: ""; position: absolute; right: 11px; top: 50%; width: 5px; height: 5px; border: solid var(--muted); border-width: 0 1.6px 1.6px 0; transform: translateY(-70%) rotate(45deg); }
+  .cur-pick select { position: absolute; inset: 0; opacity: 0; width: 100%; font-size: 16px; cursor: pointer; }
+  .cur-pick:focus-within { outline: 2px solid #3b6fd9; outline-offset: 2px; }
+
   /* Style picker */
   .styles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
   .styles button { border: 2px solid transparent; background: #e9e6df; border-radius: 14px; padding: 8px 4px 6px; display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 600; color: var(--muted); }
@@ -264,20 +272,20 @@
   <main id="view"></main>
 </div>
 
-<nav class="tabs" aria-label="导航">
+<nav class="tabs" id="tabs" aria-label="导航">
   <a href="#/new" id="tab-new">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 8V4h10v4"/><rect x="3" y="8" width="18" height="8" rx="2"/><path d="M7 13h10v7H7z"/></svg>
-    新建
+    <span id="tab-new-label">新建</span>
   </a>
   <a href="#/receipts" id="tab-receipts">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h12v18l-2-1.5L14 21l-2-1.5L10 21l-2-1.5L6 21z"/><path d="M9 8h6M9 12h6"/></svg>
-    小票夹
+    <span id="tab-receipts-label">小票夹</span>
   </a>
 </nav>
 
 <dialog id="confirm">
-  <h2>删除这张小票？</h2>
-  <p>删除后无法恢复。已经保存的图片不受影响。</p>
+  <h2 id="del-title">删除这张小票？</h2>
+  <p id="del-body">删除后无法恢复。已经保存的图片不受影响。</p>
   <div class="row">
     <button class="btn secondary small" id="confirm-cancel" style="flex:1">取消</button>
     <button class="btn danger small" id="confirm-ok" style="flex:1">删除</button>
@@ -289,12 +297,159 @@
 <script>
 'use strict';
 
+/* ---------- Language ---------- */
+// Every piece of interface text, per language. Receipts are drawn in the current language too;
+// what people typed (titles, items, names, saved categories) stays as typed.
+const I18N = {
+  zh: {
+    'app.name': '小票', 'app.desc': '把一趟旅行、一天或一个瞬间的花费，印成一张值得留下的小票。',
+    'nav': '导航', 'tab.new': '新建', 'tab.receipts': '小票夹', 'aria.lang': '语言', 'aria.currency': '币种',
+    'del.title': '删除这张小票？', 'del.body': '删除后无法恢复。已经保存的图片不受影响。', 'cancel': '取消', 'delete': '删除',
+    'cats': ['餐饮', '超市采购', '加油/充电', '住宿', '门票', '交通', '购物', '娱乐', '其他'], 'cat.other': '其他',
+    'amt.empty': '请填写金额。', 'amt.invalid': '请输入有效金额，例如 12.50。', 'amt.negative': '金额不能为负数。',
+    'amt.decimals': '最多保留两位小数。', 'amt.decimals0': '这个币种不用小数。', 'amt.range': '单项金额不能超过 {max}。',
+    'pct.invalid': '百分比格式不对，例如 8.25%。', 'pct.max': '不能超过 {max}%。',
+    'round.cent': '精确', 'round.up': '凑整', 'round.down': '抹零',
+    'pay.wechat': '微信', 'pay.alipay': '支付宝', 'pay.ph.user': '用户名', 'pay.ph.cashtag': 'cashtag', 'pay.ph.zelle': '邮箱或手机号',
+    'handle.empty': '请填写收款账号。', 'handle.long': '账号最多 60 个字符。', 'handle.chars': '用户名只能包含英文字母、数字、_ . -',
+    'err.title': '请填写标题。', 'err.titleLong': '标题最多 60 个字符。', 'err.date': '请选择日期。',
+    'err.endDate': '请选择有效的结束日期。', 'err.endBefore': '结束日期不能早于开始日期。',
+    'err.itemName': '请填写项目名称。', 'err.itemNameLong': '项目名称最多 40 个字符。', 'err.catLong': '分类最多 12 个字符。',
+    'err.people': '人数请填 2 到 99。', 'err.namesMax': '名单最多 {max} 人（{people} 人里不含你自己），请删掉几个名字或改人数。',
+    'err.payCode': '请上传{name}收款码截图。', 'err.tax': '税：{msg}', 'err.tip': '小费：{msg}',
+    'err.locLong': '地点最多 100 个字符。', 'err.noteLong': '备注最多 200 个字符。',
+    'r.subtotal': '小计', 'r.tax': '税', 'r.tip': '小费', 'r.total': '合计', 'r.totalLabel': '合计',
+    'r.perPerson': '人均 · {n} 人', 'r.tagUp': ' · 凑整', 'r.tagDown': ' · 抹零', 'r.split': '{k} × {share} + 你 {payer}',
+    'r.scan': '扫码付款 · {name}', 'r.scanEach': '每人 {share} · 扫码后输入金额', 'r.transferTo': '{name} 转账至', 'r.each': '每人 {share}',
+    'stamp.settled': '已结清', 'stamp.settledSub': 'ALL SETTLED', 'stamp.paid': '已付',
+    'sp.receipt': '小票', 'sp.photo': '照片', 'sp.category': '分类 {name}', 'sp.people': '{n} 人，人均 {share}',
+    'sp.names': '名单：{list}', 'sp.paid': '（已转）', 'sp.unpaid': '（未转）', 'sp.settled': '已结清',
+    'sp.pay': '{name} 收款 {acct}', 'sp.payQr': '，附付款二维码', 'sp.note': '备注：{note}', 'sp.no': '编号 {no}', 'sp.sep': '。',
+    'list.sep': '、', 'sample.title': '周末小记', 'sample.coffee': '咖啡', 'sample.dinner': '晚餐', 'aria.styles': '小票样式',
+    'optional': '· 可选', 'form.title': '新建小票', 'f.title': '标题', 'f.date': '日期', 'f.endDate': '结束日期',
+    'card.photoStyle': '照片和样式', 'card.placeNote': '地点和备注', 'f.location': '地点', 'f.note': '备注',
+    'ph.note': '为什么值得记住', 'ph.location': '城市、公园或地址', 'btn.print': '打印', 'btn.printing': '打印中…', 'row.add': '添加',
+    'cat.customPh': '分类名称', 'aria.itemCustomCat': '第 {i} 项的自定义分类', 'aria.itemCat': '第 {i} 项的分类',
+    'cat.none': '＋ 分类', 'cat.custom': '自定义…', 'item.phSolo': '项目（可不填）', 'item.ph': '项目',
+    'aria.itemName': '第 {i} 项名称', 'aria.itemAmount': '第 {i} 项金额，可输入多个数字相加', 'aria.addAmount': '再加一笔金额',
+    'aria.removeItem': '删除第 {i} 项', 'card.spend': '花费', 'add.item': '+ 添加一项', 'extras': '税和小费', 'ph.extra': '{sym} 或 %',
+    'btn.remove': '移除', 'aria.removeExtras': '移除税和小费', 'split.title': 'AA 分摊', 'split.people': '人数（含你）',
+    'aria.minus': '减少一人', 'aria.plus': '增加一人', 'split.each': '每人', 'split.uneven': '除不尽时',
+    'names.label': '谁要转给你', 'aria.removeName': '移除 {name}', 'names.phMore': '再加一个', 'names.ph': '输入名字后回车',
+    'toast.nameLong': '名字最多 {n} 个字。', 'pay.label': '收款码', 'pay.none': '不印', 'aria.payMethod': '收款方式',
+    'aria.payAcct': '{name} 账号', 'aria.codeUpload': '上传{name}收款码截图', 'aria.codeChange': '更换{name}收款码截图',
+    'toast.notPayCode': '这个二维码不是微信或支付宝收款码。', 'toast.noQr': '没在图里找到二维码，换一张清晰的截图试试。',
+    'toast.switched': '这是{name}收款码，已切换到{name}', 'toast.codeOk': '已识别{name}收款码',
+    'code.done': '✓ 已识别 · 更换', 'code.upload': '＋ 上传收款码截图', 'aria.photoPreview': '照片预览', 'btn.removePhoto': '移除照片',
+    'aria.addPhoto': '添加照片', 'toast.photoBad': '无法读取这张照片，换一张试试。', 'photo.add': '＋ 添加照片',
+    'hint.split': '{k} 人各 {share}，你 {payer}', 'save.failed': '小票未保存，请重试。', 'stage.done': '✓ 已收进小票夹',
+    'stage.saved': '已收进小票夹', 'btn.saveImage': '保存图片', 'btn.copyText': '复制群聊文案', 'btn.view': '查看小票', 'btn.again': '再印一张',
+    'list.title': '小票夹', 'list.empty': '还没有小票', 'list.emptyBody': '把值得记住的花费印成一张小票。', 'list.first': '印第一张',
+    'back': '‹ 小票夹', 'menu.delete': '删除小票', 'aria.more': '更多', 'card.restyle': '更换样式',
+    'toast.styleFail': '样式未保存，请重试。', 'toast.saveFail': '未保存，请重试。', 'toast.settled': '全部收齐，小票已盖章',
+    'toast.maxNames': '最多 {owed} 人（{people} 人里不含你自己）。', 'aria.paid': '{name} 已转账', 'ann.unpaid': '{name} 改为未转',
+    'ann.paid': '{name} 已转', 'pg.paid': '已转', 'aria.removeFromList': '从名单移除 {name}', 'ann.removed': '已移除 {name}',
+    'aria.addName': '添加名字', 'pg.phLeft': '还有 {n} 人没填名字', 'pg.ph': '填上名字，转了就打勾', 'pg.title': '收款进度',
+    'pg.status': '{paid}/{owed} 人 · 已收 {amt}', 'pg.waiting': '{n} 人待转', 'btn.add': '添加', 'file.prefix': '小票',
+    'toast.imgSaved': '图片已保存', 'toast.imgFail': '图片保存失败，请重试。',
+    'chat.total': '合计 {total}', 'chat.incl': '（含{what}）', 'chat.tax': '税', 'chat.tip': '小费', 'chat.and': '和',
+    'chat.split': '，{n} 人，每人 {share}', 'chat.up': '（凑整）', 'chat.down': '（抹零）', 'chat.settled': '已全部收齐，谢谢大家！',
+    'chat.names': '名单：{list}', 'chat.owing': '还差：{list}', 'chat.more': '还有 {n} 人',
+    'chat.wechat': '微信：长按小票图片，识别二维码付款', 'chat.payLink': '{name} 点这里付：{link}', 'chat.payTo': '{name} 转账至：{acct}',
+    'toast.copyFail': '复制失败，请重试。', 'toast.copied': '文案已复制，粘贴到群里就行', 'toast.delFail': '删除失败，请重试。',
+    'theme.thermal': '热敏纸', 'theme.kraft': '牛皮纸', 'theme.ticket': '票根', 'theme.midnight': '午夜',
+    'theme.notebook': '手帐', 'theme.blueprint': '蓝图', 'theme.newsprint': '报纸', 'theme.gameboy': '掌机',
+    'cur.USD': '美元', 'cur.CNY': '人民币', 'cur.EUR': '欧元', 'cur.GBP': '英镑', 'cur.JPY': '日元', 'cur.HKD': '港币',
+    'cur.TWD': '新台币', 'cur.CAD': '加元', 'cur.AUD': '澳元', 'cur.SGD': '新加坡元', 'cur.KRW': '韩元',
+  },
+  en: {
+    'app.name': 'Receipts', 'app.desc': 'Turn the spending from a trip, a day or a moment into a receipt worth keeping.',
+    'nav': 'Navigation', 'tab.new': 'New', 'tab.receipts': 'Receipts', 'aria.lang': 'Language', 'aria.currency': 'Currency',
+    'del.title': 'Delete this receipt?', 'del.body': "This can't be undone. Images you've saved aren't affected.", 'cancel': 'Cancel', 'delete': 'Delete',
+    'cats': ['Food & drink', 'Groceries', 'Fuel/charging', 'Lodging', 'Tickets', 'Transport', 'Shopping', 'Fun', 'Other'], 'cat.other': 'Other',
+    'amt.empty': 'Enter an amount.', 'amt.invalid': 'Enter a valid amount, e.g. 12.50.', 'amt.negative': "Amounts can't be negative.",
+    'amt.decimals': 'Use at most two decimal places.', 'amt.decimals0': 'This currency has no decimals.', 'amt.range': "An amount can't be over {max}.",
+    'pct.invalid': 'Use a percentage like 8.25%.', 'pct.max': "Can't be over {max}%.",
+    'round.cent': 'Exact', 'round.up': 'Round up', 'round.down': 'Round down',
+    'pay.wechat': 'WeChat Pay', 'pay.alipay': 'Alipay', 'pay.ph.user': 'username', 'pay.ph.cashtag': 'cashtag', 'pay.ph.zelle': 'email or phone',
+    'handle.empty': 'Enter your account.', 'handle.long': 'At most 60 characters.', 'handle.chars': 'Use only letters, digits, _ . -',
+    'err.title': 'Enter a title.', 'err.titleLong': 'Title: at most 60 characters.', 'err.date': 'Pick a date.',
+    'err.endDate': 'Pick a valid end date.', 'err.endBefore': "The end date can't be before the start date.",
+    'err.itemName': 'Name this item.', 'err.itemNameLong': 'Item name: at most 40 characters.', 'err.catLong': 'Category: at most 12 characters.',
+    'err.people': 'Enter 2 to 99 people.', 'err.namesMax': 'Up to {max} names ({people} people, not counting you). Remove some or change the number of people.',
+    'err.payCode': 'Upload a screenshot of your {name} code.', 'err.tax': 'Tax: {msg}', 'err.tip': 'Tip: {msg}',
+    'err.locLong': 'Place: at most 100 characters.', 'err.noteLong': 'Note: at most 200 characters.',
+    'r.subtotal': 'Subtotal', 'r.tax': 'Tax', 'r.tip': 'Tip', 'r.total': 'TOTAL', 'r.totalLabel': 'Total',
+    'r.perPerson': 'Each · {n} people', 'r.tagUp': ' · rounded', 'r.tagDown': ' · rounded', 'r.split': '{k} × {share} + you {payer}',
+    'r.scan': 'SCAN TO PAY · {name}', 'r.scanEach': 'Enter {share} after scanning', 'r.transferTo': 'SEND WITH {name} TO', 'r.each': '{share} each',
+    'stamp.settled': 'SETTLED', 'stamp.settledSub': 'ALL PAID UP', 'stamp.paid': 'PAID',
+    'sp.receipt': 'Receipt', 'sp.photo': 'Photo', 'sp.category': 'Category {name}', 'sp.people': '{n} people, {share} each',
+    'sp.names': 'Names: {list}', 'sp.paid': ' (paid)', 'sp.unpaid': ' (not paid)', 'sp.settled': 'Settled',
+    'sp.pay': 'Pay by {name}: {acct}', 'sp.payQr': ', with a QR code', 'sp.note': 'Note: {note}', 'sp.no': 'Number {no}', 'sp.sep': '. ',
+    'list.sep': ', ', 'sample.title': 'Weekend', 'sample.coffee': 'Coffee', 'sample.dinner': 'Dinner', 'aria.styles': 'Receipt style',
+    'optional': '· optional', 'form.title': 'New receipt', 'f.title': 'Title', 'f.date': 'Date', 'f.endDate': 'End date',
+    'card.photoStyle': 'Photo & style', 'card.placeNote': 'Place & note', 'f.location': 'Place', 'f.note': 'Note',
+    'ph.note': "Why it's worth remembering", 'ph.location': 'City, park or address', 'btn.print': 'Print', 'btn.printing': 'Printing…', 'row.add': 'Add',
+    'cat.customPh': 'Category', 'aria.itemCustomCat': 'Custom category for item {i}', 'aria.itemCat': 'Category for item {i}',
+    'cat.none': '+ Category', 'cat.custom': 'Custom…', 'item.phSolo': 'Item (optional)', 'item.ph': 'Item',
+    'aria.itemName': 'Item {i} name', 'aria.itemAmount': 'Item {i} amount; several numbers are added up', 'aria.addAmount': 'Add another amount',
+    'aria.removeItem': 'Remove item {i}', 'card.spend': 'Spending', 'add.item': '+ Add item', 'extras': 'Tax & tip', 'ph.extra': '{sym} or %',
+    'btn.remove': 'Remove', 'aria.removeExtras': 'Remove tax and tip', 'split.title': 'Split the bill', 'split.people': 'People (incl. you)',
+    'aria.minus': 'One fewer', 'aria.plus': 'One more', 'split.each': 'Each', 'split.uneven': 'If uneven',
+    'names.label': 'Who owes you', 'aria.removeName': 'Remove {name}', 'names.phMore': 'Add another', 'names.ph': 'Type a name, press Enter',
+    'toast.nameLong': 'Names can be at most {n} characters.', 'pay.label': 'Get paid with', 'pay.none': 'None', 'aria.payMethod': 'Payment method',
+    'aria.payAcct': '{name} account', 'aria.codeUpload': 'Upload a {name} code screenshot', 'aria.codeChange': 'Replace the {name} code screenshot',
+    'toast.notPayCode': "That QR code isn't a WeChat Pay or Alipay code.", 'toast.noQr': 'No QR code found. Try a clearer screenshot.',
+    'toast.switched': "That's a {name} code, so {name} is selected", 'toast.codeOk': '{name} code read',
+    'code.done': '✓ Read · Replace', 'code.upload': '+ Upload code screenshot', 'aria.photoPreview': 'Photo preview', 'btn.removePhoto': 'Remove photo',
+    'aria.addPhoto': 'Add photo', 'toast.photoBad': "Couldn't read that photo. Try another.", 'photo.add': '+ Add photo',
+    'hint.split': '{k} pay {share} each, you {payer}', 'save.failed': 'Receipt not saved. Try again.', 'stage.done': '✓ Saved to Receipts',
+    'stage.saved': 'Saved to Receipts', 'btn.saveImage': 'Save image', 'btn.copyText': 'Copy message', 'btn.view': 'View receipt', 'btn.again': 'Print another',
+    'list.title': 'Receipts', 'list.empty': 'No receipts yet', 'list.emptyBody': 'Print spending worth remembering as a receipt.', 'list.first': 'Print your first',
+    'back': '‹ Receipts', 'menu.delete': 'Delete receipt', 'aria.more': 'More', 'card.restyle': 'Change style',
+    'toast.styleFail': 'Style not saved. Try again.', 'toast.saveFail': 'Not saved. Try again.', 'toast.settled': "Everyone's paid. Receipt stamped.",
+    'toast.maxNames': 'At most {owed} ({people} people, not counting you).', 'aria.paid': '{name} has paid', 'ann.unpaid': '{name} marked unpaid',
+    'ann.paid': '{name} paid', 'pg.paid': 'Paid', 'aria.removeFromList': 'Remove {name}', 'ann.removed': 'Removed {name}',
+    'aria.addName': 'Add a name', 'pg.phLeft': '{n} more without a name', 'pg.ph': 'Add names, tick them when paid', 'pg.title': 'Payments',
+    'pg.status': '{paid}/{owed} paid · {amt} in', 'pg.waiting': '{n} to pay', 'btn.add': 'Add', 'file.prefix': 'receipt',
+    'toast.imgSaved': 'Image saved', 'toast.imgFail': "Couldn't save the image. Try again.",
+    'chat.total': 'Total {total}', 'chat.incl': ' (incl. {what})', 'chat.tax': 'tax', 'chat.tip': 'tip', 'chat.and': ' and ',
+    'chat.split': ', {n} people, {share} each', 'chat.up': ' (rounded up)', 'chat.down': ' (rounded down)', 'chat.settled': 'All paid. Thanks, everyone!',
+    'chat.names': 'Names: {list}', 'chat.owing': 'Still to pay: {list}', 'chat.more': '{n} more',
+    'chat.wechat': 'WeChat Pay: long-press the receipt image and scan the QR code', 'chat.payLink': 'Pay with {name}: {link}', 'chat.payTo': '{name}: {acct}',
+    'toast.copyFail': "Couldn't copy. Try again.", 'toast.copied': 'Copied. Paste it in the group chat.', 'toast.delFail': "Couldn't delete. Try again.",
+    'theme.thermal': 'Thermal', 'theme.kraft': 'Kraft', 'theme.ticket': 'Ticket', 'theme.midnight': 'Midnight',
+    'theme.notebook': 'Notebook', 'theme.blueprint': 'Blueprint', 'theme.newsprint': 'Newsprint', 'theme.gameboy': 'Handheld',
+    'cur.USD': 'US dollar', 'cur.CNY': 'Chinese yuan', 'cur.EUR': 'Euro', 'cur.GBP': 'British pound', 'cur.JPY': 'Japanese yen', 'cur.HKD': 'Hong Kong dollar',
+    'cur.TWD': 'New Taiwan dollar', 'cur.CAD': 'Canadian dollar', 'cur.AUD': 'Australian dollar', 'cur.SGD': 'Singapore dollar', 'cur.KRW': 'Korean won',
+  },
+};
+const LANGS = { zh: '中文', en: 'English' };
+const LANG_KEY = 'receipts.lang';
+// The saved choice; otherwise Chinese for anyone who already has receipts (the app started out in
+// Chinese), else the browser's language.
+let lang = (() => {
+  try {
+    const saved = localStorage.getItem(LANG_KEY);
+    if (LANGS[saved]) return saved;
+    if (localStorage.getItem('receipts.v1')) return 'zh';
+  } catch (e) { /* storage blocked */ }
+  return /^zh/i.test(navigator.language || '') ? 'zh' : 'en';
+})();
+function t(key, vars) {
+  let s = I18N[lang][key];
+  if (s === undefined) s = I18N.zh[key];
+  if (s === undefined) return key;
+  if (typeof s !== 'string' || !vars) return s;
+  return s.replace(/\{(\w+)\}/g, (m, k) => (vars[k] !== undefined ? vars[k] : m));
+}
+
 /* ---------- Model ---------- */
 
 const LIMITS = { title: 60, itemName: 40, category: 12, items: 40, location: 100, note: 200 };
 const MAX_MINOR = 9999999;
-const CATEGORIES = ['餐饮', '超市采购', '加油/充电', '住宿', '门票', '交通', '购物', '娱乐', '其他'];
-const UNCATEGORISED = '其他';
+// Default categories follow the app language; names already saved on receipts stay as typed.
+const categories = () => t('cats');
 
 // Calendar dates are plain YYYY-MM-DD strings, so they never shift with the time zone.
 function todayISO() {
@@ -313,46 +468,71 @@ function displayRange(start, end) {
   return displayDate(start) + ' – ' + displayDate(end.slice(5));
 }
 
-function formatMoney(minor) {
-  const whole = String(Math.floor(minor / 100)).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-  return '$' + whole + '.' + String(minor % 100).padStart(2, '0');
+// Each receipt has its own currency; amounts are whole minor units (cents, or yen for zero-decimal
+// currencies). No conversion between currencies. `round` is the unit for 凑整/抹零, in minor units.
+const CURRENCIES = {
+  USD: { symbol: '$', dec: 2 },
+  CNY: { symbol: '¥', dec: 2 },
+  EUR: { symbol: '€', dec: 2 },
+  GBP: { symbol: '£', dec: 2 },
+  JPY: { symbol: 'JP¥', short: '¥', dec: 0, round: 100 },
+  HKD: { symbol: 'HK$', short: '$', dec: 2 },
+  TWD: { symbol: 'NT$', short: '$', dec: 0, round: 10 },
+  CAD: { symbol: 'CA$', short: '$', dec: 2 },
+  AUD: { symbol: 'A$', short: '$', dec: 2 },
+  SGD: { symbol: 'S$', short: '$', dec: 2 },
+  KRW: { symbol: '₩', dec: 0, round: 1000 },
+};
+const CURRENCY_ORDER = ['USD', 'CNY', 'EUR', 'GBP', 'JPY', 'HKD', 'TWD', 'CAD', 'AUD', 'SGD', 'KRW'];
+const cur = (code) => CURRENCIES[code] || CURRENCIES.USD;
+// In input boxes, where the card head already names the currency, a one-character symbol is enough.
+const shortSymbol = (code) => cur(code).short || cur(code).symbol;
+const roundUnit = (code) => cur(code).round || 100;
+
+function formatMoney(minor, code) {
+  const c = cur(code);
+  const group = (n) => String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  if (!c.dec) return c.symbol + group(minor);
+  return c.symbol + group(Math.floor(minor / 100)) + '.' + String(minor % 100).padStart(2, '0');
+}
+// Amount as typed back into a field: "12.50", or "1200" for zero-decimal currencies.
+const plainAmount = (minor, code) => cur(code).dec ? (minor / 100).toFixed(2) : String(minor);
+
+function amountError(key, code) {
+  if (key === 'decimals' && !cur(code).dec) return t('amt.decimals0');
+  if (key === 'range') return t('amt.range', { max: formatMoney(MAX_MINOR, code) });
+  return t('amt.' + key);
 }
 
-const AMOUNT_ERRORS = {
-  empty: '请填写金额。',
-  invalid: '请输入有效金额，例如 12.50。',
-  negative: '金额不能为负数。',
-  decimals: '最多保留两位小数。',
-  range: '单项金额不能超过 $99,999.99。',
-};
-
-// One number, e.g. "12", "12.5", "$12.50". Returns { minor } or { error }.
-function parseSingle(tok) {
+// One number, e.g. "12", "12.5", "$12.50", "¥30". Returns { minor } or { error }.
+function parseSingle(tok, code) {
+  const c = cur(code);
   let s = tok, negative = false;
   const stripMinus = () => { if (/^[-−]/.test(s)) { negative = true; s = s.slice(1); } };
   stripMinus();
-  if (/^[$＄]/.test(s)) s = s.slice(1);
+  s = s.replace(/^[A-Za-z]{0,2}[$＄¥￥€£₩]/, '');
   stripMinus();
   const m = /^(\d*)(?:\.(\d*))?$/.exec(s);
   if (!m || (m[1] === '' && !m[2])) return { error: 'invalid' };
   if (negative) return { error: 'negative' };
-  const frac = m[2] || '';
-  if (frac.length > 2) return { error: 'decimals' };
+  const frac = (m[2] || '').replace(/0+$/, '');
+  if ((c.dec ? frac.length > c.dec : /[1-9]/.test(frac))) return { error: 'decimals' };
   const whole = m[1].replace(/^0+/, '');
-  if (whole.length > 5) return { error: 'range' };
+  if (whole.length > (c.dec ? 5 : 7)) return { error: 'range' };
+  if (!c.dec) return { minor: Number(whole || 0) };
   return { minor: Number(whole || 0) * 100 + Number(frac.padEnd(2, '0')) };
 }
 
 // An amount may be several numbers to add up: "18.2, 20.1, 5" or "18.2+20.1+5".
 // Commas (half- or full-width), "、", ";", "+" and spaces all mean "plus".
 // Returns { minor, parts } or { error }.
-function parseAmount(raw) {
+function parseAmount(raw, code) {
   const tokens = String(raw).trim().split(/[+＋,，、;；\s]+/).filter(Boolean);
   if (!String(raw).trim()) return { error: 'empty' };
   if (!tokens.length) return { error: 'invalid' };
   const parts = [];
   for (const tok of tokens) {
-    const one = parseSingle(tok);
+    const one = parseSingle(tok, code);
     if (one.error) return one;
     parts.push(one.minor);
   }
@@ -360,41 +540,40 @@ function parseAmount(raw) {
   if (minor > MAX_MINOR) return { error: 'range' };
   return { minor, parts };
 }
-const plainAmount = (minor) => (minor / 100).toFixed(2);
 
 const len = (s) => Array.from(s).length;
 
 // Tax or tip: an amount ("12.30") or a percentage of the subtotal ("8.25%"). Empty means none.
 // Returns { minor, rate } where rate is the percentage as text ("8.25") or null, or { error }.
-function parseExtra(raw, subtotal, maxPct) {
+function parseExtra(raw, subtotal, maxPct, code) {
   const s = String(raw || '').trim().replace(/％/g, '%').replace(/\s+/g, '');
   if (!s) return { minor: 0, rate: null };
   if (s.endsWith('%')) {
     const m = /^(\d{1,3})(?:\.(\d{1,3}))?%$/.exec(s);
-    if (!m) return { error: '百分比格式不对，例如 8.25%。' };
+    if (!m) return { error: t('pct.invalid') };
     const pct = Number(m[1] + '.' + (m[2] || '0'));
-    if (pct > maxPct) return { error: '不能超过 ' + maxPct + '%。' };
+    if (pct > maxPct) return { error: t('pct.max', { max: maxPct }) };
     return { minor: Math.round(subtotal * pct / 100), rate: String(pct) };
   }
-  const a = parseSingle(s);
-  if (a.error) return { error: AMOUNT_ERRORS[a.error] };
+  const a = parseSingle(s, code);
+  if (a.error) return { error: amountError(a.error, code) };
   return { minor: a.minor, rate: null };
 }
 const TIP_PRESETS = ['15%', '18%', '20%'];
 
 // Splitting a total that does not divide evenly. Each friend pays the same share and the payer
-// covers the difference: to the cent (rounded up, so the payer is never short), rounded up to whole
-// dollars, or rounded down to whole dollars (抹零, the payer treats everyone to the change).
-const ROUNDING = { cent: '精确到分', up: '凑整到元', down: '抹零' };
+// covers the difference: to the smallest unit (rounded up, so the payer is never short), rounded up to
+// a whole unit (dollar, yuan, ¥100, ₩1000), or rounded down to one (抹零, the payer treats everyone).
 const ROUNDING_ORDER = ['cent', 'up', 'down'];
-function splitShare(total, people, mode) {
+function splitShare(total, people, mode, code) {
   if (!(people >= 2)) return total;
   const exact = total / people;
+  const unit = roundUnit(code);
   if (mode === 'up') {
-    const up = Math.ceil(exact / 100) * 100;
+    const up = Math.ceil(exact / unit) * unit;
     return up * (people - 1) <= total ? up : Math.ceil(exact);
   }
-  if (mode === 'down') { const down = Math.floor(exact / 100) * 100; return down > 0 ? down : Math.ceil(exact); }
+  if (mode === 'down') { const down = Math.floor(exact / unit) * unit; return down > 0 ? down : Math.ceil(exact); }
   if (mode === 'cent') return Math.ceil(exact);
   return Math.round(exact); // receipts printed before rounding modes existed
 }
@@ -404,13 +583,14 @@ function splitShare(total, people, mode) {
 // WeChat and Alipay use the payer's own receive code: its screenshot is decoded once in the browser and
 // the code is reprinted crisply. These codes carry no amount, so the friend types it in.
 const PAY_METHODS = {
-  venmo: { name: 'Venmo', prefix: '@', placeholder: '用户名' },
-  paypal: { name: 'PayPal', prefix: 'paypal.me/', placeholder: '用户名' },
-  cashapp: { name: 'Cash App', prefix: '$', placeholder: 'cashtag' },
-  zelle: { name: 'Zelle', prefix: '', placeholder: '邮箱或手机号' },
-  wechat: { name: '微信', code: /^wxp:\/\/\S+$/i },
-  alipay: { name: '支付宝', code: /^https?:\/\/qr\.alipay\.com\/\S+$/i },
+  venmo: { name: 'Venmo', prefix: '@', ph: 'pay.ph.user' },
+  paypal: { name: 'PayPal', prefix: 'paypal.me/', ph: 'pay.ph.user' },
+  cashapp: { name: 'Cash App', prefix: '$', ph: 'pay.ph.cashtag' },
+  zelle: { name: 'Zelle', prefix: '', ph: 'pay.ph.zelle' },
+  wechat: { nameKey: 'pay.wechat', code: /^wxp:\/\/\S+$/i },
+  alipay: { nameKey: 'pay.alipay', code: /^https?:\/\/qr\.alipay\.com\/\S+$/i },
 };
+for (const k in PAY_METHODS) if (PAY_METHODS[k].nameKey) Object.defineProperty(PAY_METHODS[k], 'name', { get: () => t(PAY_METHODS[k].nameKey) });
 const PAY_ORDER = ['venmo', 'paypal', 'cashapp', 'zelle', 'wechat', 'alipay'];
 // Which receive code a decoded QR is, if either.
 function codeMethod(text) {
@@ -431,16 +611,16 @@ function normalizeHandle(method, raw) {
   return h.replace(/^[@$]+/, '');
 }
 function handleError(method, h) {
-  if (!h) return '请填写收款账号。';
-  if (method === 'zelle') return len(h) > 60 ? '账号最多 60 个字符。' : null;
-  return /^[A-Za-z0-9_.-]{1,30}$/.test(h) ? null : '用户名只能包含英文字母、数字、_ . -';
+  if (!h) return t('handle.empty');
+  if (method === 'zelle') return len(h) > 60 ? t('handle.long') : null;
+  return /^[A-Za-z0-9_.-]{1,30}$/.test(h) ? null : t('handle.chars');
 }
 function payDisplay(pay) {
   const m = PAY_METHODS[pay.method];
   return m.code ? m.name : pay.method === 'zelle' ? pay.handle : m.prefix + pay.handle;
 }
 // The amount each friend pays (the total for an unsplit receipt).
-function shareMinor(r) { return splitShare(r.totalMinor, r.people, r.rounding); }
+function shareMinor(r) { return splitShare(r.totalMinor, r.people, r.rounding, r.currency); }
 // What the payer's own share comes to once every friend has paid their share.
 function payerMinor(r) { return r.totalMinor - shareMinor(r) * (r.people - 1); }
 // A link that opens the payment, prefilled with the amount where the method allows it; the receive
@@ -449,14 +629,36 @@ function payLink(r) {
   const p = r.pay;
   if (!p || !PAY_METHODS[p.method] || p.method === 'zelle') return null;
   if (PAY_METHODS[p.method].code) return p.code || null;
-  const amount = plainAmount(shareMinor(r));
+  const code = r.currency || 'USD';
+  const amount = plainAmount(shareMinor(r), code);
   const h = encodeURIComponent(p.handle);
   // Keep the note short: every Chinese character costs 9 bytes in the URL and makes the QR denser.
   const note = encodeURIComponent(Array.from(r.title).slice(0, 16).join(''));
-  if (p.method === 'venmo') return 'https://venmo.com/' + h + '?txn=pay&amount=' + amount + '&note=' + note;
-  if (p.method === 'paypal') return 'https://paypal.me/' + h + '/' + amount + 'USD';
-  if (p.method === 'cashapp') return 'https://cash.app/$' + h + '/' + amount;
+  // Venmo and Cash App only take dollars, so other currencies get a plain profile link.
+  if (p.method === 'venmo') return code === 'USD' ? 'https://venmo.com/' + h + '?txn=pay&amount=' + amount + '&note=' + note : 'https://venmo.com/' + h;
+  if (p.method === 'paypal') return 'https://paypal.me/' + h + '/' + amount + code;
+  if (p.method === 'cashapp') return code === 'USD' ? 'https://cash.app/$' + h + '/' + amount : 'https://cash.app/$' + h;
   return null;
+}
+// Whether the payment link already carries the amount (otherwise the friend types it in).
+function payHasAmount(r) {
+  const m = r.pay && r.pay.method;
+  return m === 'paypal' || ((m === 'venmo' || m === 'cashapp') && (r.currency || 'USD') === 'USD');
+}
+
+// The currency of the last receipt is where the next one starts.
+const CURRENCY_KEY = 'receipts.currency.v1';
+function loadCurrencyPref() {
+  try {
+    const c = localStorage.getItem(CURRENCY_KEY);
+    if (CURRENCIES[c]) return c;
+    // Before currencies existed every receipt was in dollars.
+    if (localStorage.getItem('receipts.v1')) return 'USD';
+  } catch (e) { /* fall through */ }
+  return lang === 'zh' ? 'CNY' : 'USD';
+}
+function saveCurrencyPref(code) {
+  try { localStorage.setItem(CURRENCY_KEY, code); } catch (e) { /* not critical */ }
 }
 
 // The last account used is remembered, so the next split receipt starts with it filled in.
@@ -497,14 +699,14 @@ function recentNames() {
 function validate(draft) {
   const errors = {}, focus = {};
   const title = draft.title.trim();
-  if (!title) errors.title = '请填写标题。';
-  else if (len(title) > LIMITS.title) errors.title = '标题最多 60 个字符。';
+  if (!title) errors.title = t('err.title');
+  else if (len(title) > LIMITS.title) errors.title = t('err.titleLong');
 
   const start = draft.date || todayISO();
-  if (!isValidISO(start)) errors.date = '请选择日期。';
+  if (!isValidISO(start)) errors.date = t('err.date');
   const end = draft.endDate && draft.endDate !== start ? draft.endDate : null;
-  if (end && !isValidISO(end)) errors.endDate = '请选择有效的结束日期。';
-  else if (end && end < start) errors.endDate = '结束日期不能早于开始日期。';
+  if (end && !isValidISO(end)) errors.endDate = t('err.endDate');
+  else if (end && end < start) errors.endDate = t('err.endBefore');
 
   // Rows left completely blank are ignored. A single item may go unnamed (a one-amount receipt).
   const rows = draft.items.map((it, i) => ({ i, name: it.name.trim(), amount: it.amount.trim(),
@@ -512,13 +714,14 @@ function validate(draft) {
   const filled = rows.filter((r) => r.name || r.amount);
   const items = [];
   const fail = (r, msg, where) => { errors['item-' + r.i] = msg; focus['item-' + r.i] = where; };
-  if (!filled.length) fail(rows[0], AMOUNT_ERRORS.empty, 'amount');
+  const code = CURRENCIES[draft.currency] ? draft.currency : 'USD';
+  if (!filled.length) fail(rows[0], amountError('empty', code), 'amount');
   for (const r of filled) {
-    const amount = parseAmount(r.amount);
-    if (amount.error) fail(r, AMOUNT_ERRORS[amount.error], 'amount');
-    else if (!r.name && (filled.length > 1 || r.category)) fail(r, '请填写项目名称。', 'name');
-    else if (len(r.name) > LIMITS.itemName) fail(r, '项目名称最多 40 个字符。', 'name');
-    else if (len(r.category) > LIMITS.category) fail(r, '分类最多 12 个字符。', 'name');
+    const amount = parseAmount(r.amount, code);
+    if (amount.error) fail(r, amountError(amount.error, code), 'amount');
+    else if (!r.name && (filled.length > 1 || r.category)) fail(r, t('err.itemName'), 'name');
+    else if (len(r.name) > LIMITS.itemName) fail(r, t('err.itemNameLong'), 'name');
+    else if (len(r.category) > LIMITS.category) fail(r, t('err.catLong'), 'name');
     else {
       // The addends are kept so the receipt can show how the amount was reached: either still
       // typed in the field, or remembered from when the field was collapsed to its sum.
@@ -532,19 +735,19 @@ function validate(draft) {
   const peopleText = draft.split ? String(draft.people || '').trim() : '';
   let people = null;
   if (draft.split) {
-    if (!/^\d{1,2}$/.test(peopleText) || Number(peopleText) < 2) errors.people = '人数请填 2 到 99。';
+    if (!/^\d{1,2}$/.test(peopleText) || Number(peopleText) < 2) errors.people = t('err.people');
     else people = Number(peopleText);
   }
 
   const names = Array.from(new Set((draft.names || []).map((s) => s.trim()).filter(Boolean)));
-  if (people && names.length > people - 1) errors.names = '名单最多 ' + (people - 1) + ' 人（' + people + ' 人里不含你自己），请删掉几个名字或改人数。';
+  if (people && names.length > people - 1) errors.names = t('err.namesMax', { max: people - 1, people });
 
   // A payment account is only printed on a split receipt.
   let pay = null;
   const method = draft.pay && PAY_METHODS[draft.pay.method] ? draft.pay.method : '';
   if (people && method && PAY_METHODS[method].code) {
     const code = String(draft.pay.code || '').trim();
-    if (codeMethod(code) !== method) errors.pay = '请上传' + PAY_METHODS[method].name + '收款码截图。';
+    if (codeMethod(code) !== method) errors.pay = t('err.payCode', { name: PAY_METHODS[method].name });
     else pay = { method, handle: '', code };
   } else if (people && method) {
     const handle = normalizeHandle(method, draft.pay.handle);
@@ -555,21 +758,21 @@ function validate(draft) {
 
   // Tax and tip, each an amount or a percentage of the items' subtotal (tip is usually on the pre-tax amount).
   const subtotal = items.reduce((sum, it) => sum + it.amountMinor, 0);
-  const tax = parseExtra(draft.tax, subtotal, 30);
-  if (tax.error) errors.tax = '税：' + tax.error;
-  const tip = parseExtra(draft.tip, subtotal, 100);
-  if (tip.error) errors.tip = '小费：' + tip.error;
-  const rounding = ROUNDING[draft.rounding] ? draft.rounding : 'cent';
+  const tax = parseExtra(draft.tax, subtotal, 30, code);
+  if (tax.error) errors.tax = t('err.tax', { msg: tax.error });
+  const tip = parseExtra(draft.tip, subtotal, 100, code);
+  if (tip.error) errors.tip = t('err.tip', { msg: tip.error });
+  const rounding = ROUNDING_ORDER.includes(draft.rounding) ? draft.rounding : 'cent';
 
   const location = draft.location.trim();
-  if (len(location) > LIMITS.location) errors.location = '地点最多 100 个字符。';
+  if (len(location) > LIMITS.location) errors.location = t('err.locLong');
   const note = draft.note.trim();
-  if (len(note) > LIMITS.note) errors.note = '备注最多 200 个字符。';
+  if (len(note) > LIMITS.note) errors.note = t('err.noteLong');
 
   if (Object.keys(errors).length) return { errors, focus };
   return { errors, focus, input: {
     title, purchaseDate: start, endDate: end, items,
-    subtotalMinor: subtotal,
+    currency: code, subtotalMinor: subtotal,
     taxMinor: tax.minor || 0, taxRate: tax.minor ? tax.rate : null,
     tipMinor: tip.minor || 0, tipRate: tip.minor ? tip.rate : null,
     totalMinor: subtotal + (tax.minor || 0) + (tip.minor || 0),
@@ -586,7 +789,7 @@ function groupItems(items) {
   if (!items.some((it) => it.category)) return [{ name: '', items, subtotal: 0 }];
   const groups = [];
   for (const it of items) {
-    const name = it.category || UNCATEGORISED;
+    const name = it.category || t('cat.other');
     let g = groups.find((x) => x.name === name);
     if (!g) { g = { name, items: [], subtotal: 0 }; groups.push(g); }
     g.items.push(it);
@@ -606,12 +809,12 @@ function newDraft(style) {
   const id = (crypto.randomUUID && crypto.randomUUID()) ||
     Array.from(crypto.getRandomValues(new Uint8Array(16)), (b) => b.toString(16).padStart(2, '0')).join('');
   return { id, title: '', date: null, endDate: null, items: [{ name: '', amount: '', category: '', parts: [] }],
-    split: false, people: '', names: [], rounding: 'cent', tax: '', tip: '', pay: loadPayPref(), location: '', note: '', photo: null, style: style || 'thermal' };
+    currency: loadCurrencyPref(), split: false, people: '', names: [], rounding: 'cent', tax: '', tip: '', pay: loadPayPref(), location: '', note: '', photo: null, style: style || 'thermal' };
 }
 
 // Receipts and drafts saved by earlier versions had one merchant and one amount, and no style.
 function upgradeReceipt(r) {
-  const out = Object.assign({ style: 'thermal', people: null }, r);
+  const out = Object.assign({ style: 'thermal', people: null, currency: 'USD' }, r);
   if (!Array.isArray(r.items)) Object.assign(out, {
     title: r.merchant, items: [{ name: '', amountMinor: r.amountMinor }], totalMinor: r.amountMinor,
     endDate: null, photo: null,
@@ -623,7 +826,7 @@ function upgradeDraft(d) {
   if (Array.isArray(d.items) && d.items.length) {
     // Drafts from before the AA switch: a head count of 2 or more meant splitting.
     const split = typeof d.split === 'boolean' ? d.split : Number(d.people) >= 2;
-    return Object.assign({ style: 'thermal', people: '', names: [], rounding: 'cent', tax: '', tip: '', pay: loadPayPref() }, d, { split },
+    return Object.assign({ style: 'thermal', currency: loadCurrencyPref(), people: '', names: [], rounding: 'cent', tax: '', tip: '', pay: loadPayPref() }, d, { split },
       { items: d.items.map((it) => Object.assign({ category: '', parts: [] }, it)) });
   }
   return Object.assign(newDraft(), {
@@ -679,6 +882,7 @@ function commit(input) {
     printedAt: String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0'),
   }, input);
   if (!existing && receipt.pay) savePayPref(receipt.pay);
+  if (!existing) saveCurrencyPref(receipt.currency);
   // The next draft starts in the style just used.
   write({ receipts: sorted(existing ? state.receipts : state.receipts.concat(receipt)), draft: newDraft(receipt.style) });
   return receipt;
@@ -911,47 +1115,48 @@ const INK = '#211f24';
 
 const THEMES = {
   thermal: {
-    name: '热敏纸', paper: ['#fbf8f0', '#f8f4ea'], ink: '#211f24', accent: '#211f24',
+    paper: ['#fbf8f0', '#f8f4ea'], ink: '#211f24', accent: '#211f24',
     font: MONO, rule: 'dash', top: 'flat', bottom: 'torn', padTop: 30,
     wear: 0.16, wearLines: 2, fibres: 1, photo: 'atkinson',
   },
   kraft: {
-    name: '牛皮纸', paper: ['#d6b98d', '#caa978'], ink: '#38261a', accent: '#9c2f1c',
+    paper: ['#d6b98d', '#caa978'], ink: '#38261a', accent: '#9c2f1c',
     font: SERIF, rule: 'double', top: 'zig', bottom: 'zig', padTop: 34,
     wear: 0.1, wearLines: 0, fibres: 2.2, stamp: true, photo: 'bayer',
   },
   ticket: {
-    name: '票根', paper: ['#fff7ef', '#fdeee3'], ink: '#22304f', accent: '#e2553f', band: '#e2553f',
+    paper: ['#fff7ef', '#fdeee3'], ink: '#22304f', accent: '#e2553f', band: '#e2553f',
     font: SANS, rule: 'dot', top: 'scallop', bottom: 'scallop', padTop: 28, totalColor: 'accent',
     wear: 0.04, wearLines: 0, fibres: 0, barcode: true, photo: 'riso',
   },
   midnight: {
-    name: '午夜', paper: ['#1f2437', '#141827'], ink: '#ece6d6', accent: '#f0c050', dark: true,
+    paper: ['#1f2437', '#141827'], ink: '#ece6d6', accent: '#f0c050', dark: true,
     font: MONO, rule: 'dash', ruleColor: 'accent', top: 'flat', bottom: 'torn', padTop: 30, totalColor: 'accent',
     wear: 0.07, wearLines: 0, fibres: 0, stars: true, photo: 'invert',
   },
   notebook: {
-    name: '手帐', paper: ['#fdfcf6', '#faf8ef'], ink: '#2a3966', accent: '#d2483c',
+    paper: ['#fdfcf6', '#faf8ef'], ink: '#2a3966', accent: '#d2483c',
     font: SANS, rule: 'solid', top: 'flat', bottom: 'flat', padTop: 32, totalColor: 'accent',
     wear: 0.05, wearLines: 0, fibres: 0, grid: { step: 12, color: 'rgba(70,120,190,0.17)' }, holes: true, photo: 'polaroid',
   },
   blueprint: {
-    name: '蓝图', paper: ['#2456a6', '#1c478f'], ink: '#eef4ff', accent: '#a9dcff', dark: true,
+    paper: ['#2456a6', '#1c478f'], ink: '#eef4ff', accent: '#a9dcff', dark: true,
     font: MONO, rule: 'solid', ruleColor: 'accent', top: 'flat', bottom: 'flat', padTop: 34, totalColor: 'accent',
     wear: 0.05, wearLines: 0, fibres: 0, grid: { step: 12, color: 'rgba(255,255,255,0.07)', major: 5, majorColor: 'rgba(255,255,255,0.13)' },
     frame: true, photo: 'lines',
   },
   newsprint: {
-    name: '报纸', paper: ['#ebe8e0', '#e1ded4'], ink: '#171717', accent: '#171717',
+    paper: ['#ebe8e0', '#e1ded4'], ink: '#171717', accent: '#171717',
     font: SERIF, titleSize: 26, masthead: true, rule: 'double', top: 'flat', bottom: 'torn', padTop: 26,
     wear: 0.13, wearLines: 0, fibres: 1.4, photo: 'halftone',
   },
   gameboy: {
-    name: '掌机', paper: ['#cfdd9f', '#c5d593'], ink: '#0f380f', accent: '#306230',
+    paper: ['#cfdd9f', '#c5d593'], ink: '#0f380f', accent: '#306230',
     font: MONO, rule: 'pixel', top: 'flat', bottom: 'zig', padTop: 30,
     wear: 0.03, wearLines: 0, fibres: 0, photo: 'gameboy',
   },
 };
+for (const k in THEMES) Object.defineProperty(THEMES[k], 'name', { get: () => t('theme.' + k) });
 const THEME_ORDER = ['thermal', 'kraft', 'ticket', 'midnight', 'notebook', 'blueprint', 'newsprint', 'gameboy'];
 
 function hash32(str) {
@@ -1046,6 +1251,7 @@ function paperPath(ctx, T, H, rand, notchY) {
 }
 
 function drawReceipt(r, scale) {
+  const money = (m) => formatMoney(m, r.currency);
   scale = scale || Math.min(3, Math.max(2, window.devicePixelRatio || 1));
   const T = THEMES[r.style] || THEMES.thermal;
   const F = T.font;
@@ -1097,25 +1303,25 @@ function drawReceipt(r, scale) {
   if (itemised) {
     const itemFont = '13px ' + F;
     measure.font = itemFont;
-    const amountW = Math.max(...r.items.map((it) => measure.measureText(formatMoney(it.amountMinor)).width));
+    const amountW = Math.max(...r.items.map((it) => measure.measureText(money(it.amountMinor)).width));
     const nameW = inner - amountW - 12;
     y += 14;
     groupItems(r.items).forEach((g, gi) => {
       if (gi) y += 14;
       if (g.name) {
         if (g.items.length > 1) {
-          ops.push({ t: 'text', str: formatMoney(g.subtotal), font: '11px ' + F, align: 'right', y: y + 9, spacing: 0, alpha: 0.75, color: 'accent' });
+          ops.push({ t: 'text', str: money(g.subtotal), font: '11px ' + F, align: 'right', y: y + 9, spacing: 0, alpha: 0.75, color: 'accent' });
         }
         text(g.name, 'bold 12px ' + F, 18, 'left', { color: 'accent', spacing: 1, noWrap: true });
         y += 4;
       }
       g.items.forEach((it, i) => {
         if (i) y += 7;
-        ops.push({ t: 'text', str: formatMoney(it.amountMinor), font: itemFont, align: 'right', y: y + 9, spacing: 0, alpha: 1, color: 'ink' });
+        ops.push({ t: 'text', str: money(it.amountMinor), font: itemFont, align: 'right', y: y + 9, spacing: 0, alpha: 1, color: 'ink' });
         text(it.name, itemFont, 18, 'left', { width: nameW });
         // An amount entered as a sum shows its addends, like a till listing each charge.
         if (it.parts && it.parts.length > 1) {
-          text(it.parts.map(plainAmount).join(' + '), '10.5px ' + SMALL, 14, 'left', { width: nameW, alpha: 0.62 });
+          text(it.parts.map((x) => plainAmount(x, r.currency)).join(' + '), '10.5px ' + SMALL, 14, 'left', { width: nameW, alpha: 0.62 });
         }
       });
     });
@@ -1126,39 +1332,47 @@ function drawReceipt(r, scale) {
   if (r.taxMinor || r.tipMinor) {
     y += 14;
     const line = (label, minor) => {
-      ops.push({ t: 'text', str: formatMoney(minor), font: '13px ' + F, align: 'right', y: y + 9, spacing: 0, alpha: 0.85, color: 'ink' });
+      ops.push({ t: 'text', str: money(minor), font: '13px ' + F, align: 'right', y: y + 9, spacing: 0, alpha: 0.85, color: 'ink' });
       text(label, '13px ' + F, 18, 'left', { alpha: 0.85, noWrap: true });
       y += 4;
     };
-    line('小计', r.subtotalMinor);
-    if (r.taxMinor) line('税' + (r.taxRate ? ' ' + r.taxRate + '%' : ''), r.taxMinor);
-    if (r.tipMinor) line('小费' + (r.tipRate ? ' ' + r.tipRate + '%' : ''), r.tipMinor);
+    line(t('r.subtotal'), r.subtotalMinor);
+    if (r.taxMinor) line(t('r.tax') + (r.taxRate ? ' ' + r.taxRate + '%' : ''), r.taxMinor);
+    if (r.tipMinor) line(t('r.tip') + (r.tipRate ? ' ' + r.tipRate + '%' : ''), r.tipMinor);
     y += 6; rule();
   }
 
   // Total, shrunk if needed so very large sums still fit beside the label.
   y += 18;
-  const total = formatMoney(r.totalMinor);
+  const total = money(r.totalMinor);
   let size = 28;
   for (; size > 16; size--) {
     measure.font = 'bold ' + size + 'px ' + F;
     if (measure.measureText(total).width <= inner - 64) break;
   }
   const totalY = y + 17;
-  ops.push({ t: 'text', str: '合计', font: '600 14px ' + F, align: 'left', y: totalY + 2, spacing: 3, alpha: 1, color: 'ink' });
+  ops.push({ t: 'text', str: t('r.total'), font: '600 14px ' + F, align: 'left', y: totalY + 2, spacing: 3, alpha: 1, color: 'ink' });
   ops.push({ t: 'text', str: total, font: 'bold ' + size + 'px ' + F, align: 'right', y: totalY, spacing: 0, alpha: 1, color: T.totalColor || 'ink' });
-  if (T.stamp) ops.push({ t: 'stamp', x: 112, y: totalY - 2 });
+  // Kraft's decorative stamp sits between the label and the amount, moving left for long amounts.
+  measure.font = 'bold ' + size + 'px ' + F;
+  if (T.stamp) ops.push({ t: 'stamp', x: Math.min(112, W - PAD_X - measure.measureText(total).width - 30), y: totalY - 2 });
   y += 34;
 
   // Optional split between people.
   if (r.people >= 2) {
     y += 8;
-    ops.push({ t: 'text', str: formatMoney(shareMinor(r)), font: 'bold 15px ' + F, align: 'right', y: y + 10, spacing: 0, alpha: 1, color: 'ink' });
-    const tag = r.rounding === 'up' ? ' · 凑整' : r.rounding === 'down' ? ' · 抹零' : '';
-    text('人均 · ' + r.people + ' 人' + tag, '12px ' + F, 20, 'left', { spacing: 1, alpha: 0.85, noWrap: true });
+    ops.push({ t: 'text', str: money(shareMinor(r)), font: 'bold 15px ' + F, align: 'right', y: y + 10, spacing: 0, alpha: 1, color: 'ink' });
+    // The rounding tag is dropped when it would run into the amount; the line below shows the split anyway.
+    const tag = r.rounding === 'up' ? t('r.tagUp') : r.rounding === 'down' ? t('r.tagDown') : '';
+    measure.font = 'bold 15px ' + F;
+    const shareW = measure.measureText(money(shareMinor(r))).width;
+    measure.font = '12px ' + F;
+    let label = t('r.perPerson', { n: r.people }) + tag;
+    if (measure.measureText(label).width + label.length + shareW + 12 > inner) label = t('r.perPerson', { n: r.people });
+    text(label, '12px ' + F, 20, 'left', { spacing: 1, alpha: 0.85, noWrap: true });
     // When the total does not divide evenly, show how it adds up: friends' shares plus the payer's.
     if (r.rounding && shareMinor(r) * r.people !== r.totalMinor) {
-      text((r.people - 1) + ' × ' + formatMoney(shareMinor(r)) + ' + 你 ' + formatMoney(payerMinor(r)), '10.5px ' + SMALL, 14, 'right', { alpha: 0.62, noWrap: true });
+      text(t('r.split', { k: r.people - 1, share: money(shareMinor(r)), payer: money(payerMinor(r)) }), '10.5px ' + SMALL, 14, 'right', { alpha: 0.62, noWrap: true });
     }
   }
   // Who owes the payer, two to a row, each with a box that is ticked once they have paid.
@@ -1193,7 +1407,7 @@ function drawReceipt(r, scale) {
     }
     rule(); y += 18;
     if (qr) {
-      text('扫码付款 · ' + m.name, '600 12px ' + F, 18, 'center', { spacing: 2, noWrap: true });
+      text(t('r.scan', { name: m.name }), '600 12px ' + F, 18, 'center', { spacing: 2, noWrap: true });
       y += 10;
       const n = qr.getModuleCount();
       const quiet = 3;
@@ -1202,14 +1416,14 @@ function drawReceipt(r, scale) {
       y = Math.round(y);
       ops.push({ t: 'qr', qr, n, mod, quiet, size, x: Math.round((W - size) / 2), y });
       y += size + 10;
-      // A receive code carries no amount, so say what to type in.
-      if (m.code) text('每人 ' + formatMoney(shareMinor(r)) + ' · 扫码后输入金额', '12px ' + F, 16, 'center', { noWrap: true });
-      else text(payDisplay(r.pay) + ' · ' + formatMoney(shareMinor(r)), '12px ' + F, 16, 'center', { noWrap: true });
+      // A receive code (or a link in another currency) carries no amount, so say what to type in.
+      if (!payHasAmount(r)) text(t('r.scanEach', { share: money(shareMinor(r)) }), '12px ' + F, 16, 'center', { noWrap: true });
+      else text(payDisplay(r.pay) + ' · ' + money(shareMinor(r)), '12px ' + F, 16, 'center', { noWrap: true });
     } else {
-      text(m.name + ' 转账至', '600 12px ' + F, 18, 'center', { spacing: 2, noWrap: true });
+      text(t('r.transferTo', { name: m.name }), '600 12px ' + F, 18, 'center', { spacing: 2, noWrap: true });
       y += 4;
       text(payDisplay(r.pay), 'bold 15px ' + F, 20, 'center');
-      text('每人 ' + formatMoney(shareMinor(r)), '12px ' + F, 16, 'center', { noWrap: true, alpha: 0.85 });
+      text(t('r.each', { share: money(shareMinor(r)) }), '12px ' + F, 16, 'center', { noWrap: true, alpha: 0.85 });
     }
     y += 18;
   }
@@ -1341,11 +1555,11 @@ function drawReceipt(r, scale) {
       ink.lineWidth = 0.8; ink.strokeRect(-48, -17, 96, 34);
       ink.textAlign = 'center';
       ink.font = 'bold 17px ' + SERIF;
-      if ('letterSpacing' in ink) ink.letterSpacing = '4px';
-      ink.fillText('已结清', 2, -3);
+      if ('letterSpacing' in ink) ink.letterSpacing = lang === 'zh' ? '4px' : '2px';
+      ink.fillText(t('stamp.settled'), 2, -3);
       ink.font = 'bold 7px ' + MONO;
       if ('letterSpacing' in ink) ink.letterSpacing = '3px';
-      ink.fillText('ALL SETTLED', 2, 10);
+      ink.fillText(t('stamp.settledSub'), 2, 10);
       ink.restore();
       continue;
     }
@@ -1369,10 +1583,11 @@ function drawReceipt(r, scale) {
       ink.lineWidth = 2; ink.beginPath(); ink.arc(0, 0, 25, 0, Math.PI * 2); ink.stroke();
       ink.lineWidth = 0.8; ink.beginPath(); ink.arc(0, 0, 21, 0, Math.PI * 2); ink.stroke();
       ink.textAlign = 'center';
-      ink.font = 'bold 16px ' + SERIF; ink.fillText('已付', 0, -4);
+      // Chinese: 已付 over a small PAID; English: PAID alone.
+      ink.font = 'bold ' + (lang === 'zh' ? 16 : 13) + 'px ' + SERIF; ink.fillText(t('stamp.paid'), 0, lang === 'zh' ? -4 : 4);
       ink.font = 'bold 6.5px ' + SERIF;
       if ('letterSpacing' in ink) ink.letterSpacing = '2px';
-      ink.fillText('PAID', 1, 10);
+      if (lang === 'zh') ink.fillText('PAID', 1, 10);
       ink.restore();
       continue;
     }
@@ -1422,25 +1637,26 @@ function drawReceipt(r, scale) {
 }
 
 function spokenText(r) {
-  const parts = ['小票', r.title, displayRange(r.purchaseDate, r.endDate)];
+  const money = (m) => formatMoney(m, r.currency);
+  const parts = [t('sp.receipt'), r.title, displayRange(r.purchaseDate, r.endDate)];
   if (r.location) parts.push(r.location);
-  if (r.photo) parts.push('照片');
+  if (r.photo) parts.push(t('sp.photo'));
   for (const g of groupItems(r.items)) {
-    if (g.name) parts.push('分类 ' + g.name);
-    for (const it of g.items) if (it.name) parts.push(it.name + ' ' + formatMoney(it.amountMinor));
+    if (g.name) parts.push(t('sp.category', { name: g.name }));
+    for (const it of g.items) if (it.name) parts.push(it.name + ' ' + money(it.amountMinor));
   }
-  if (r.taxMinor || r.tipMinor) parts.push('小计 ' + formatMoney(r.subtotalMinor));
-  if (r.taxMinor) parts.push('税 ' + formatMoney(r.taxMinor));
-  if (r.tipMinor) parts.push('小费 ' + formatMoney(r.tipMinor));
-  parts.push('合计 ' + formatMoney(r.totalMinor));
-  if (r.people >= 2) parts.push(r.people + ' 人，人均 ' + formatMoney(shareMinor(r)));
+  if (r.taxMinor || r.tipMinor) parts.push(t('r.subtotal') + ' ' + money(r.subtotalMinor));
+  if (r.taxMinor) parts.push(t('r.tax') + ' ' + money(r.taxMinor));
+  if (r.tipMinor) parts.push(t('r.tip') + ' ' + money(r.tipMinor));
+  parts.push(t('r.total') + ' ' + money(r.totalMinor));
+  if (r.people >= 2) parts.push(t('sp.people', { n: r.people, share: money(shareMinor(r)) }));
   const ps = r.people >= 2 ? participantsOf(r) : [];
-  if (ps.length) parts.push('名单：' + ps.map((p) => p.name + (p.paid ? '（已转）' : '（未转）')).join('、'));
-  if (isSettled(r)) parts.push('已结清');
-  if (r.pay && PAY_METHODS[r.pay.method]) parts.push(PAY_METHODS[r.pay.method].name + ' 收款 ' + payDisplay(r.pay) + (payLink(r) ? '，附付款二维码' : ''));
-  if (r.note) parts.push('备注：' + r.note);
-  parts.push('编号 ' + (r.no || receiptNo(r.id, r.createdAt)));
-  return parts.join('。');
+  if (ps.length) parts.push(t('sp.names', { list: ps.map((p) => p.name + t(p.paid ? 'sp.paid' : 'sp.unpaid')).join(t('list.sep')) }));
+  if (isSettled(r)) parts.push(t('sp.settled'));
+  if (r.pay && PAY_METHODS[r.pay.method]) parts.push(t('sp.pay', { name: PAY_METHODS[r.pay.method].name, acct: payDisplay(r.pay) }) + (payLink(r) ? t('sp.payQr') : ''));
+  if (r.note) parts.push(t('sp.note', { note: r.note }));
+  parts.push(t('sp.no', { no: r.no || receiptNo(r.id, r.createdAt) }));
+  return parts.join(t('sp.sep'));
 }
 
 // Thumbnails are cached in memory only and rebuilt on demand.
@@ -1455,12 +1671,12 @@ function thumbnail(r) {
 }
 
 // A small fixed sample receipt per style, used by the style pickers.
-const SAMPLE = { title: '周末小记', purchaseDate: '2026-11-14', endDate: null, location: null, note: null, photo: null,
-  items: [{ name: '咖啡', amountMinor: 650, category: '' }, { name: '晚餐', amountMinor: 4200, category: '' }], totalMinor: 4850 };
+const sampleReceipt = () => ({ title: t('sample.title'), purchaseDate: '2026-11-14', endDate: null, location: null, note: null, photo: null,
+  currency: 'USD', items: [{ name: t('sample.coffee'), amountMinor: 650, category: '' }, { name: t('sample.dinner'), amountMinor: 4200, category: '' }], totalMinor: 4850 });
 function stylePicker(current, onPick, extraClass) {
-  return el('div', { class: 'styles' + (extraClass ? ' ' + extraClass : ''), role: 'radiogroup', 'aria-label': '小票样式' },
+  return el('div', { class: 'styles' + (extraClass ? ' ' + extraClass : ''), role: 'radiogroup', 'aria-label': t('aria.styles') },
     THEME_ORDER.map((key) => {
-      const sample = drawReceipt(Object.assign({ id: 'sample-' + key, style: key }, SAMPLE), 1);
+      const sample = drawReceipt(Object.assign({ id: 'sample-' + key, style: key }, sampleReceipt()), 1);
       sample.removeAttribute('role'); sample.setAttribute('aria-hidden', 'true');
       return el('button', { type: 'button', role: 'radio', 'aria-checked': String(key === current),
         onclick: () => { if (key !== current) onPick(key); } },
@@ -1512,13 +1728,61 @@ function toast(msg) {
 
 function setChrome(title, tab, left, right) {
   $('title').textContent = title;
-  document.title = title ? title + ' · 小票' : '小票';
+  document.title = title && title !== t('app.name') ? title + ' · ' + t('app.name') : t('app.name');
   $('top-left').replaceChildren(...(left ? [left] : []));
   $('top-right').replaceChildren(...(right ? [right] : []));
   for (const name of ['new', 'receipts']) {
     if (tab === name) $('tab-' + name).setAttribute('aria-current', 'page');
     else $('tab-' + name).removeAttribute('aria-current');
   }
+}
+
+/* Language and currency pickers */
+
+// The page's fixed text (tabs, delete dialog, title) in the current language.
+function applyStatic() {
+  document.documentElement.lang = lang === 'zh' ? 'zh-CN' : 'en';
+  $('meta-desc').setAttribute('content', t('app.desc'));
+  $('tabs').setAttribute('aria-label', t('nav'));
+  $('tab-new-label').textContent = t('tab.new');
+  $('tab-receipts-label').textContent = t('tab.receipts');
+  $('del-title').textContent = t('del.title');
+  $('del-body').textContent = t('del.body');
+  $('confirm-cancel').textContent = t('cancel');
+  $('confirm-ok').textContent = t('delete');
+}
+function setLang(next) {
+  if (!LANGS[next] || next === lang) return;
+  lang = next;
+  try { localStorage.setItem(LANG_KEY, next); } catch (e) { /* this session only */ }
+  thumbs.clear();
+  applyStatic();
+  route();
+}
+
+// Header button with a two-item menu: 中文 / English.
+function langButton() {
+  const menu = el('div', { class: 'menu', hidden: '', role: 'menu' }, Object.keys(LANGS).map((k) =>
+    el('button', { role: 'menuitemradio', 'aria-checked': String(k === lang), lang: k === 'zh' ? 'zh-CN' : 'en',
+      onclick: () => { menu.hidden = true; setLang(k); } }, [el('span', { text: LANGS[k] }), k === lang ? el('span', { class: 'tick', text: '✓' }) : null])));
+  const btn = el('button', { class: 'icon-btn lang-btn', 'aria-label': t('aria.lang'), 'aria-haspopup': 'menu',
+    onclick: (e) => { e.stopPropagation(); menu.hidden = !menu.hidden; } }, [
+    el('span', { class: 'globe', 'aria-hidden': 'true' }),
+    el('span', { text: lang === 'zh' ? '中文' : 'EN' }),
+  ]);
+  btn.querySelector('.globe').innerHTML = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9s-1.3 6.4-3.8 9c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg>';
+  return el('div', { style: 'position:relative' }, [btn, menu]);
+}
+
+// Currency for this receipt, in the head of the spending card. Amounts are not converted.
+function currencyPicker(d) {
+  const code = CURRENCIES[d.currency] ? d.currency : 'USD';
+  const select = el('select', { class: 'cur-select', id: 'i-currency', 'aria-label': t('aria.currency'),
+    onchange: (e) => { patchDraft((n) => { n.currency = e.target.value; }); renderForm(); } },
+    CURRENCY_ORDER.map((k) => el('option', { value: k, text: k + ' ' + CURRENCIES[k].symbol + ' · ' + t('cur.' + k) })));
+  select.value = code;
+  // The closed picker shows just the code and symbol, e.g. "CNY ¥".
+  return el('label', { class: 'cur-pick' }, [el('span', { 'aria-hidden': 'true', text: code + ' ' + CURRENCIES[code].symbol }), select]);
 }
 
 /* New receipt form */
@@ -1534,12 +1798,12 @@ function patchItem(i, change) {
 
 function optionalLabel(text, forId) {
   const label = el(forId ? 'label' : 'span', { for: forId, class: forId ? null : 'label', text: text + ' ' });
-  label.append(el('small', { text: '· 可选' }));
+  label.append(el('small', { text: t('optional') }));
   return label;
 }
 
 function renderForm(focusId) {
-  setChrome('新建小票', 'new');
+  setChrome(t('form.title'), 'new', null, langButton());
   const d = state.draft;
   if (d.location || d.note) showMore = true;
   const keepScroll = window.scrollY;
@@ -1557,14 +1821,14 @@ function renderForm(focusId) {
   // The form reads top to bottom as: what and when, what it cost, who shares it, how it looks.
   const form = el('form', { novalidate: '', onsubmit: onPrint, onkeydown: onFormKey }, [
     el('section', { class: 'card' }, [
-      field('title', '标题', el('div', { class: 'box' },
+      field('title', t('f.title'), el('div', { class: 'box' },
         input('title', { type: 'text', value: d.title, enterkeyhint: 'next' }))),
       el('div', { class: 'two' }, [
-        field('date', '日期', el('div', { class: 'box' }, el('input', {
+        field('date', t('f.date'), el('div', { class: 'box' }, el('input', {
           id: 'i-date', type: 'date', value: d.date || todayISO(), 'aria-describedby': 'e-date',
           oninput: (e) => { patchDraft((n) => { n.date = e.target.value || null; }); refresh(); },
         }))),
-        field('endDate', optionalLabel('结束日期', 'i-endDate'), el('div', { class: 'box' }, el('input', {
+        field('endDate', optionalLabel(t('f.endDate'), 'i-endDate'), el('div', { class: 'box' }, el('input', {
           id: 'i-endDate', type: 'date', value: d.endDate || '', 'aria-describedby': 'e-endDate',
           oninput: (e) => { patchDraft((n) => { n.endDate = e.target.value || null; }); refresh(); },
         }))),
@@ -1573,7 +1837,7 @@ function renderForm(focusId) {
     renderItems(d),
     renderSplit(d),
     el('section', { class: 'card' }, [
-      el('div', { class: 'card-head' }, el('h2', { text: '照片和样式' })),
+      el('div', { class: 'card-head' }, el('h2', { text: t('card.photoStyle') })),
       renderPhoto(d),
       stylePicker(THEMES[d.style] ? d.style : 'thermal', (key) => { patchDraft((n) => { n.style = key; }); renderForm(); }),
     ]),
@@ -1582,23 +1846,23 @@ function renderForm(focusId) {
   if (showMore) {
     const counter = el('span', { class: 'counter', id: 'note-count' });
     const note = el('textarea', {
-      id: 'i-note', name: 'note', rows: '3', 'aria-describedby': 'e-note', placeholder: '为什么值得记住',
+      id: 'i-note', name: 'note', rows: '3', 'aria-describedby': 'e-note', placeholder: t('ph.note'),
       oninput: (e) => { patchDraft((n) => { n.note = e.target.value; }); refresh(); },
     });
     note.value = d.note;
     form.append(el('section', { class: 'card' }, [
-      el('div', { class: 'card-head' }, el('h2', { text: '地点和备注' })),
-      field('location', '地点', el('div', { class: 'box' },
-        input('location', { type: 'text', placeholder: '城市、公园或地址', value: d.location }))),
-      field('note', '备注', el('div', { class: 'box' }, note), counter),
+      el('div', { class: 'card-head' }, el('h2', { text: t('card.placeNote') })),
+      field('location', t('f.location'), el('div', { class: 'box' },
+        input('location', { type: 'text', placeholder: t('ph.location'), value: d.location }))),
+      field('note', t('f.note'), el('div', { class: 'box' }, note), counter),
     ]));
   } else {
-    form.append(el('section', { class: 'card' }, rowButton('地点和备注', () => { showMore = true; renderForm('i-location'); })));
+    form.append(el('section', { class: 'card' }, rowButton(t('card.placeNote'), () => { showMore = true; renderForm('i-location'); })));
   }
 
   form.append(el('div', { class: 'print-bar' }, [
     el('p', { class: 'save-error', id: 'save-error', role: 'alert', hidden: '' }),
-    el('button', { class: 'btn', id: 'print', type: 'submit', text: '打印' }),
+    el('button', { class: 'btn', id: 'print', type: 'submit', text: t('btn.print') }),
   ]));
 
   view.replaceChildren(form);
@@ -1610,7 +1874,7 @@ function renderForm(focusId) {
 // A whole-width row that opens an optional part of the form.
 function rowButton(label, onclick, extraClass) {
   return el('button', { type: 'button', class: 'row-btn' + (extraClass ? ' ' + extraClass : ''), onclick },
-    [el('span', { text: label }), el('span', { class: 'row-add', text: '添加', 'aria-hidden': 'true' })]);
+    [el('span', { text: label }), el('span', { class: 'row-add', text: t('row.add'), 'aria-hidden': 'true' })]);
 }
 
 function renderCategory(d, i) {
@@ -1622,15 +1886,16 @@ function renderCategory(d, i) {
       renderForm();
     };
     return el('div', { class: 'cat' }, el('input', {
-      id: 'i-item-' + i + '-category', type: 'text', value, placeholder: '分类名称', maxlength: String(LIMITS.category),
-      'aria-label': '第 ' + (i + 1) + ' 项的自定义分类', autocomplete: 'off', onchange: commit, onblur: commit,
+      id: 'i-item-' + i + '-category', type: 'text', value, placeholder: t('cat.customPh'), maxlength: String(LIMITS.category),
+      'aria-label': t('aria.itemCustomCat', { i: i + 1 }), autocomplete: 'off', onchange: commit, onblur: commit,
     }));
   }
   // Defaults, plus any custom categories already used on this receipt.
-  const used = d.items.map((it) => it.category).filter((c) => c && !CATEGORIES.includes(c));
-  const options = CATEGORIES.concat(Array.from(new Set(used)));
+  const defaults = categories();
+  const used = d.items.map((it) => it.category).filter((c) => c && !defaults.includes(c));
+  const options = defaults.concat(Array.from(new Set(used)));
   const select = el('select', {
-    id: 'i-item-' + i + '-category', class: value ? null : 'none', 'aria-label': '第 ' + (i + 1) + ' 项的分类',
+    id: 'i-item-' + i + '-category', class: value ? null : 'none', 'aria-label': t('aria.itemCat', { i: i + 1 }),
     onchange: (e) => {
       if (e.target.value === '__custom') { customRows.add(i); renderForm('i-item-' + i + '-category'); return; }
       patchItem(i, { category: e.target.value });
@@ -1639,9 +1904,9 @@ function renderCategory(d, i) {
       refresh();
     },
   }, [
-    el('option', { value: '', text: '＋ 分类' }),
+    el('option', { value: '', text: t('cat.none') }),
     ...options.map((c) => el('option', { value: c, text: c })),
-    el('option', { value: '__custom', text: '自定义…' }),
+    el('option', { value: '__custom', text: t('cat.custom') }),
   ]);
   select.value = value;
   return el('div', { class: 'cat' }, select);
@@ -1653,22 +1918,22 @@ function renderItems(d) {
     el('div', { class: 'row' }, [
       el('div', { class: 'box' }, el('input', {
         id: 'i-item-' + i + '-name', type: 'text', autocomplete: 'off', value: it.name,
-        placeholder: solo ? '项目（可不填）' : '项目', 'aria-label': '第 ' + (i + 1) + ' 项名称',
+        placeholder: solo ? t('item.phSolo') : t('item.ph'), 'aria-label': t('aria.itemName', { i: i + 1 }),
         'aria-describedby': 'e-item-' + i, enterkeyhint: 'next',
         oninput: (e) => { patchItem(i, { name: e.target.value }); refresh(); },
       })),
       el('div', { class: 'box amount' }, [
-        el('span', { text: '$', 'aria-hidden': 'true' }),
+        el('span', { text: shortSymbol(d.currency), 'aria-hidden': 'true' }),
         el('input', {
           id: 'i-item-' + i + '-amount', type: 'text', inputmode: 'decimal', autocomplete: 'off', value: it.amount,
-          placeholder: '0.00', 'aria-label': '第 ' + (i + 1) + ' 项金额（美元），可输入多个数字相加',
+          placeholder: cur(d.currency).dec ? '0.00' : '0', 'aria-label': t('aria.itemAmount', { i: i + 1 }),
           'aria-describedby': 'e-item-' + i + ' h-item-' + i, enterkeyhint: 'next',
           // Typing by hand discards any remembered addends; they are rebuilt when the field is collapsed.
           oninput: (e) => { patchItem(i, { amount: e.target.value, parts: [] }); refresh(); },
           onchange: () => collapseAmount(i),
         }),
         // Phone number pads have no comma or plus key, so offer one.
-        el('button', { type: 'button', class: 'plus', 'aria-label': '再加一笔金额', text: '+',
+        el('button', { type: 'button', class: 'plus', 'aria-label': t('aria.addAmount'), text: '+',
           onclick: () => {
             const input = $('i-item-' + i + '-amount');
             const value = input.value.trim();
@@ -1676,7 +1941,7 @@ function renderItems(d) {
             input.focus();
           } }),
       ]),
-      solo ? null : el('button', { type: 'button', class: 'remove', 'aria-label': '删除第 ' + (i + 1) + ' 项', text: '×',
+      solo ? null : el('button', { type: 'button', class: 'remove', 'aria-label': t('aria.removeItem', { i: i + 1 }), text: '×',
         onclick: () => { customRows.clear(); patchDraft((n) => { n.items = n.items.filter((x, j) => j !== i); }); renderForm(); } }),
     ]),
     el('div', { class: 'under' }, [renderCategory(d, i), el('span', { class: 'hint', id: 'h-item-' + i })]),
@@ -1688,13 +1953,13 @@ function renderItems(d) {
   const sumLine = (key, label) => el('div', { class: 'sum-line', id: 'sum-' + key, hidden: '' },
     [el('span', { id: 'sum-' + key + '-label', text: label }), el('span', { id: 'sum-' + key + '-amt' })]);
   return el('section', { class: 'card items' }, [
-    el('div', { class: 'card-head' }, el('h2', { text: '花费' })),
+    el('div', { class: 'card-head' }, [el('h2', { text: t('card.spend') }), currencyPicker(d)]),
     ...rows,
-    canAdd ? el('button', { type: 'button', class: 'link add-item', id: 'add-item', text: '+ 添加一项', onclick: addItem }) : null,
+    canAdd ? el('button', { type: 'button', class: 'link add-item', id: 'add-item', text: t('add.item'), onclick: addItem }) : null,
     renderExtras(d),
     el('div', { class: 'totals' }, [
-      sumLine('sub', '小计'), sumLine('tax', '税'), sumLine('tip', '小费'),
-      el('div', { class: 'grand-line' }, [el('span', { text: '合计' }), el('b', { id: 'grand-total' })]),
+      sumLine('sub', t('r.subtotal')), sumLine('tax', t('r.tax')), sumLine('tip', t('r.tip')),
+      el('div', { class: 'grand-line' }, [el('span', { text: t('r.totalLabel') }), el('b', { id: 'grand-total' })]),
     ]),
   ]);
 }
@@ -1708,7 +1973,7 @@ function lastTaxRate() {
 // Tax and tip, folded into a row until wanted.
 function renderExtras(d) {
   if (!showExtras && !String(d.tax || '').trim() && !String(d.tip || '').trim()) {
-    return rowButton('税和小费', () => { showExtras = true; renderForm('i-tax'); }, 'extras-link');
+    return rowButton(t('extras'), () => { showExtras = true; renderForm('i-tax'); }, 'extras-link');
   }
   const setField = (name, value) => {
     patchDraft((n) => { n[name] = value; });
@@ -1720,7 +1985,7 @@ function renderExtras(d) {
       el('label', { for: 'i-' + name, text: label }),
       chips,
       el('div', { class: 'box amount' }, el('input', {
-        id: 'i-' + name, type: 'text', inputmode: 'decimal', autocomplete: 'off', value: d[name] || '', placeholder: '$ 或 %',
+        id: 'i-' + name, type: 'text', inputmode: 'decimal', autocomplete: 'off', value: d[name] || '', placeholder: t('ph.extra', { sym: shortSymbol(d.currency) }),
         'aria-describedby': 'e-' + name, enterkeyhint: 'next',
         oninput: (e) => { patchDraft((n) => { n[name] = e.target.value; }); refresh(); },
       })),
@@ -1730,14 +1995,14 @@ function renderExtras(d) {
   const rate = lastTaxRate();
   return el('div', { class: 'extras' }, [
     el('div', { class: 'sub-head' }, [
-      el('span', { text: '税和小费' }),
+      el('span', { text: t('extras') }),
       // Removing clears both fields, since a filled field is what keeps this part open.
-      el('button', { type: 'button', class: 'link quiet', text: '移除', 'aria-label': '移除税和小费',
+      el('button', { type: 'button', class: 'link quiet', text: t('btn.remove'), 'aria-label': t('aria.removeExtras'),
         onclick: () => { showExtras = false; patchDraft((n) => { n.tax = ''; n.tip = ''; }); renderForm(); } }),
     ]),
-    field('tax', '税', rate
+    field('tax', t('r.tax'), rate
       ? el('div', { class: 'presets', 'data-field': 'tax' }, el('button', { type: 'button', text: rate, 'aria-pressed': 'false', onclick: () => setField('tax', rate) })) : null),
-    field('tip', '小费', el('div', { class: 'presets', 'data-field': 'tip' }, TIP_PRESETS.map((p) =>
+    field('tip', t('r.tip'), el('div', { class: 'presets', 'data-field': 'tip' }, TIP_PRESETS.map((p) =>
       el('button', { type: 'button', text: p, 'aria-pressed': 'false', onclick: () => setField('tip', p) })))),
   ]);
 }
@@ -1745,7 +2010,7 @@ function renderExtras(d) {
 // AA: a switch in the section head; when on, head count, each person's share, rounding, names and payment.
 function renderSplit(d) {
   const on = !!d.split;
-  const toggle = el('button', { type: 'button', class: 'switch', role: 'switch', id: 'i-split', 'aria-checked': String(on), 'aria-label': 'AA 分摊',
+  const toggle = el('button', { type: 'button', class: 'switch', role: 'switch', id: 'i-split', 'aria-checked': String(on), 'aria-label': t('split.title'),
     onclick: () => {
       patchDraft((n) => {
         n.split = !on;
@@ -1753,7 +2018,7 @@ function renderSplit(d) {
       });
       renderForm(on ? 'i-split' : 'i-people');
     } });
-  if (!on) return el('section', { class: 'card' }, el('div', { class: 'card-head flat' }, [el('h2', { text: 'AA 分摊' }), toggle]));
+  if (!on) return el('section', { class: 'card' }, el('div', { class: 'card-head flat' }, [el('h2', { text: t('split.title') }), toggle]));
 
   const step = (delta) => {
     patchDraft((x) => { const k = Number(x.people) || 2; x.people = String(Math.min(99, Math.max(2, k + delta))); });
@@ -1761,24 +2026,24 @@ function renderSplit(d) {
     refresh();
   };
   return el('section', { class: 'card split' }, [
-    el('div', { class: 'card-head' }, [el('h2', { text: 'AA 分摊' }), toggle]),
+    el('div', { class: 'card-head' }, [el('h2', { text: t('split.title') }), toggle]),
     el('div', { class: 'field-row', id: 'f-people' }, [
-      el('label', { for: 'i-people', text: '人数（含你）' }),
+      el('label', { for: 'i-people', text: t('split.people') }),
       el('div', { class: 'stepper' }, [
-        el('button', { type: 'button', 'aria-label': '减少一人', text: '−', onclick: () => step(-1) }),
+        el('button', { type: 'button', 'aria-label': t('aria.minus'), text: '−', onclick: () => step(-1) }),
         el('input', { id: 'i-people', type: 'text', inputmode: 'numeric', autocomplete: 'off', value: d.people || '',
           maxlength: '2', 'aria-describedby': 'e-people',
           oninput: (e) => { patchDraft((n) => { n.people = e.target.value; }); refresh(); } }),
-        el('button', { type: 'button', 'aria-label': '增加一人', text: '+', onclick: () => step(1) }),
+        el('button', { type: 'button', 'aria-label': t('aria.plus'), text: '+', onclick: () => step(1) }),
       ]),
     ]),
     el('p', { class: 'error', id: 'e-people', role: 'alert', hidden: '' }),
-    el('div', { class: 'per-line' }, [el('span', { text: '每人' }), el('b', { id: 'per-person' })]),
+    el('div', { class: 'per-line' }, [el('span', { text: t('split.each') }), el('b', { id: 'per-person' })]),
     el('p', { class: 'split-hint', id: 'h-split' }),
     el('div', { class: 'rounding', id: 'f-rounding' }, [
-      el('span', { class: 'sub-label', text: '除不尽时' }),
-      el('div', { class: 'seg', role: 'radiogroup', 'aria-label': '除不尽时' }, ROUNDING_ORDER.map((k) =>
-        el('button', { type: 'button', role: 'radio', 'data-mode': k, 'aria-checked': String((d.rounding || 'cent') === k), text: ROUNDING[k],
+      el('span', { class: 'sub-label', text: t('split.uneven') }),
+      el('div', { class: 'seg', role: 'radiogroup', 'aria-label': t('split.uneven') }, ROUNDING_ORDER.map((k) =>
+        el('button', { type: 'button', role: 'radio', 'data-mode': k, 'aria-checked': String((d.rounding || 'cent') === k), text: t('round.' + k),
           onclick: () => { patchDraft((n) => { n.rounding = k; }); refresh(); } }))),
     ]),
     renderNames(d),
@@ -1791,13 +2056,13 @@ function renderNames(d) {
   const names = d.names || [];
   const suggestions = recentNames().filter((n) => !names.includes(n)).slice(0, 8);
   return el('div', { class: 'names', id: 'f-names' }, [
-    el('label', { class: 'sub-label', for: 'i-names', text: '谁要转给你' }),
+    el('label', { class: 'sub-label', for: 'i-names', text: t('names.label') }),
     el('div', { class: 'chips' }, [
       ...names.map((n, i) => el('span', { class: 'chip' }, [n,
-        el('button', { type: 'button', 'aria-label': '移除 ' + n, text: '×',
+        el('button', { type: 'button', 'aria-label': t('aria.removeName', { name: n }), text: '×',
           onclick: () => { patchDraft((x) => { x.names = x.names.filter((_, j) => j !== i); }); renderForm('i-names'); } })])),
       el('input', { id: 'i-names', type: 'text', autocomplete: 'off', enterkeyhint: 'done', 'aria-describedby': 'e-names',
-        placeholder: names.length ? '再加一个' : '输入名字后回车' }),
+        placeholder: names.length ? t('names.phMore') : t('names.ph') }),
     ]),
     suggestions.length ? el('div', { class: 'suggest' }, suggestions.map((n) =>
       el('button', { type: 'button', text: '+ ' + n, onclick: () => addNames(n) }))) : null,
@@ -1809,7 +2074,7 @@ function renderNames(d) {
 function addNames(raw, rerender) {
   const add = splitNames(raw);
   if (!add.length) return;
-  if (add.some((n) => len(n) > NAME_MAX)) { toast('名字最多 ' + NAME_MAX + ' 个字。'); return; }
+  if (add.some((n) => len(n) > NAME_MAX)) { toast(t('toast.nameLong', { n: NAME_MAX })); return; }
   patchDraft((x) => {
     x.names = Array.from(new Set((x.names || []).concat(add)));
     const n = /^\d{1,2}$/.test(String(x.people || '').trim()) ? Number(x.people) : 0;
@@ -1823,19 +2088,19 @@ function renderPay(d) {
   const pay = d.pay || { method: '', handle: '', code: '' };
   const m = PAY_METHODS[pay.method];
   const setPay = (change) => patchDraft((n) => { n.pay = Object.assign({ method: '', handle: '', code: '' }, n.pay, change); });
-  const select = el('select', { id: 'i-pay-method', class: m ? null : 'none', 'aria-label': '收款方式',
+  const select = el('select', { id: 'i-pay-method', class: m ? null : 'none', 'aria-label': t('aria.payMethod'),
     onchange: (e) => { setPay({ method: e.target.value }); renderForm(e.target.value ? 'i-pay' : 'i-pay-method'); },
-  }, [el('option', { value: '', text: '不印' }), ...PAY_ORDER.map((k) => el('option', { value: k, text: PAY_METHODS[k].name }))]);
+  }, [el('option', { value: '', text: t('pay.none') }), ...PAY_ORDER.map((k) => el('option', { value: k, text: PAY_METHODS[k].name }))]);
   select.value = pay.method || '';
   return el('div', { class: 'pay', id: 'f-pay' }, [
-    el('label', { class: 'sub-label', for: 'i-pay-method', text: '收款码' }),
+    el('label', { class: 'sub-label', for: 'i-pay-method', text: t('pay.label') }),
     el('div', { class: 'pay-row' }, [
       el('div', { class: 'cat' }, select),
       m && m.code ? renderCodePick(pay, setPay) : m ? el('div', { class: 'box' }, [
         m.prefix ? el('span', { text: m.prefix, 'aria-hidden': 'true' }) : null,
         el('input', {
           id: 'i-pay', type: 'text', autocomplete: 'off', enterkeyhint: 'done', autocapitalize: 'off', spellcheck: 'false',
-          value: pay.handle, placeholder: m.placeholder, maxlength: '80', 'aria-label': m.name + ' 账号', 'aria-describedby': 'e-pay',
+          value: pay.handle, placeholder: t(m.ph), maxlength: '80', 'aria-label': t('aria.payAcct', { name: m.name }), 'aria-describedby': 'e-pay',
           oninput: (e) => { setPay({ handle: e.target.value }); refresh(); },
           // "@name" or a pasted profile link becomes just the name.
           onchange: (e) => {
@@ -1854,7 +2119,7 @@ function renderCodePick(pay, setPay) {
   const m = PAY_METHODS[pay.method];
   const ok = codeMethod(pay.code) === pay.method;
   const file = el('input', { type: 'file', accept: 'image/*', id: 'i-pay', 'aria-describedby': 'e-pay',
-    'aria-label': (ok ? '更换' : '上传') + m.name + '收款码截图',
+    'aria-label': t(ok ? 'aria.codeChange' : 'aria.codeUpload', { name: m.name }),
     onchange: async (e) => {
       const f = e.target.files && e.target.files[0];
       if (!f) return;
@@ -1863,12 +2128,12 @@ function renderCodePick(pay, setPay) {
       e.target.value = '';
       const found = codeMethod(text);
       if (!found) {
-        toast(text ? '这个二维码不是微信或支付宝收款码。' : '没在图里找到二维码，换一张清晰的截图试试。');
+        toast(t(text ? 'toast.notPayCode' : 'toast.noQr'));
         return;
       }
       setPay({ method: found, code: text.trim() });
-      if (found !== pay.method) toast('这是' + PAY_METHODS[found].name + '收款码，已切换到' + PAY_METHODS[found].name);
-      else toast('已识别' + m.name + '收款码');
+      if (found !== pay.method) toast(t('toast.switched', { name: PAY_METHODS[found].name }));
+      else toast(t('toast.codeOk', { name: m.name }));
       renderForm('i-pay');
     } });
   let preview = null;
@@ -1883,7 +2148,7 @@ function renderCodePick(pay, setPay) {
     } catch (err) { preview = null; }
   }
   return el('label', { class: 'code-pick' + (ok ? ' done' : '') }, [
-    file, preview, el('span', { text: ok ? '✓ 已识别 · 更换' : '＋ 上传收款码截图' }),
+    file, preview, el('span', { text: t(ok ? 'code.done' : 'code.upload') }),
   ]);
 }
 
@@ -1924,11 +2189,12 @@ async function decodeQrFile(file) {
 function collapseAmount(i) {
   const it = state.draft.items[i];
   if (!it) return;
-  const a = parseAmount(it.amount);
+  const code = state.draft.currency;
+  const a = parseAmount(it.amount, code);
   if (a.error || a.parts.length < 2) return;
-  patchItem(i, { amount: plainAmount(a.minor), parts: a.parts });
+  patchItem(i, { amount: plainAmount(a.minor, code), parts: a.parts });
   const input = $('i-item-' + i + '-amount');
-  if (input) input.value = plainAmount(a.minor);
+  if (input) input.value = plainAmount(a.minor, code);
   refresh();
 }
 
@@ -1944,17 +2210,17 @@ function addItem() {
 function renderPhoto(d) {
   if (d.photo) {
     const px = 2;
-    const c = el('canvas', { width: d.photo.w * px, height: d.photo.h * px, role: 'img', 'aria-label': '照片预览' });
+    const c = el('canvas', { width: d.photo.w * px, height: d.photo.h * px, role: 'img', 'aria-label': t('aria.photoPreview') });
     const ctx = c.getContext('2d');
     ctx.fillStyle = INK;
     fillTone(ctx, atkinson(photoGray(d.photo), d.photo.w, d.photo.h, 2), d.photo.w, d.photo.h, 0, 0, 0, px);
     return el('div', { class: 'field' }, el('div', { class: 'photo-preview' }, [
       c,
-      el('button', { type: 'button', class: 'link quiet', text: '移除照片',
+      el('button', { type: 'button', class: 'link quiet', text: t('btn.removePhoto'),
         onclick: () => { patchDraft((n) => { n.photo = null; }); renderForm(); } }),
     ]));
   }
-  const file = el('input', { type: 'file', accept: 'image/*', id: 'i-photo', 'aria-label': '添加照片',
+  const file = el('input', { type: 'file', accept: 'image/*', id: 'i-photo', 'aria-label': t('aria.addPhoto'),
     onchange: async (e) => {
       const f = e.target.files && e.target.files[0];
       if (!f) return;
@@ -1964,10 +2230,10 @@ function renderPhoto(d) {
         renderForm();
       } catch (err) {
         e.target.value = '';
-        toast('无法读取这张照片，换一张试试。');
+        toast(t('toast.photoBad'));
       }
     } });
-  return el('div', { class: 'field' }, el('label', { class: 'photo-pick' }, [file, '＋ 添加照片']));
+  return el('div', { class: 'field' }, el('label', { class: 'photo-pick' }, [file, t('photo.add')]));
 }
 
 // Enter moves through the fields instead of printing, so a long list can be typed quickly.
@@ -1984,7 +2250,7 @@ function onFormKey(e) {
   else if (m && m[2] === 'category') e.target.blur();
   else if (m && m[2] === 'name') $('i-item-' + m[1] + '-amount').focus();
   else if (m) {
-    const multi = (parseAmount(e.target.value).parts || []).length > 1;
+    const multi = (parseAmount(e.target.value, state.draft.currency).parts || []).length > 1;
     collapseAmount(Number(m[1]));
     if (multi) return; // stay on the field so the computed sum is seen
     const next = $('i-item-' + (Number(m[1]) + 1) + '-name');
@@ -2008,45 +2274,47 @@ function refresh() {
     });
   });
 
+  const d = state.draft;
+  const code = d.currency;
+  const money = (m) => formatMoney(m, code);
   let total = 0;
-  state.draft.items.forEach((it, i) => {
-    const a = parseAmount(it.amount);
+  d.items.forEach((it, i) => {
+    const a = parseAmount(it.amount, code);
     if (!a.error) total += a.minor;
     const hint = $('h-item-' + i);
     if (!hint) return;
     // While a sum is being typed show its result; once collapsed show what it was made of.
-    if (!a.error && a.parts.length > 1) hint.textContent = '= ' + formatMoney(a.minor);
+    if (!a.error && a.parts.length > 1) hint.textContent = '= ' + money(a.minor);
     else if (!a.error && it.parts && it.parts.length > 1 && it.parts.reduce((x, y) => x + y, 0) === a.minor) {
-      hint.textContent = it.parts.map(plainAmount).join(' + ');
+      hint.textContent = it.parts.map((x) => plainAmount(x, code)).join(' + ');
     } else hint.textContent = '';
   });
   // Tax and tip on top of the items' subtotal; the breakdown lines show only when used.
-  const d = state.draft;
   const subtotal = total;
-  const tax = parseExtra(d.tax, subtotal, 30), tip = parseExtra(d.tip, subtotal, 100);
+  const tax = parseExtra(d.tax, subtotal, 30, code), tip = parseExtra(d.tip, subtotal, 100, code);
   total = subtotal + (tax.minor || 0) + (tip.minor || 0);
   const hasExtras = !!((tax.minor || 0) + (tip.minor || 0));
   const sumLine = (key, show, label, minor) => {
     if (!$('sum-' + key)) return;
     $('sum-' + key).hidden = !show;
     if (label) $('sum-' + key + '-label').textContent = label;
-    $('sum-' + key + '-amt').textContent = formatMoney(minor || 0);
+    $('sum-' + key + '-amt').textContent = money(minor || 0);
   };
   sumLine('sub', hasExtras, null, subtotal);
-  sumLine('tax', !!tax.minor, '税' + (tax.rate ? ' ' + tax.rate + '%' : ''), tax.minor);
-  sumLine('tip', !!tip.minor, '小费' + (tip.rate ? ' ' + tip.rate + '%' : ''), tip.minor);
-  if ($('grand-total')) $('grand-total').textContent = formatMoney(total);
+  sumLine('tax', !!tax.minor, t('r.tax') + (tax.rate ? ' ' + tax.rate + '%' : ''), tax.minor);
+  sumLine('tip', !!tip.minor, t('r.tip') + (tip.rate ? ' ' + tip.rate + '%' : ''), tip.minor);
+  if ($('grand-total')) $('grand-total').textContent = money(total);
   view.querySelectorAll('.presets button').forEach((b) => b.setAttribute('aria-pressed',
     String(String(d[b.parentNode.dataset.field] || '').replace(/\s/g, '') === b.textContent)));
 
   if ($('per-person')) {
     const n = /^\d{1,2}$/.test(String(d.people || '').trim()) ? Number(d.people) : 0;
-    const share = splitShare(total, n, d.rounding || 'cent');
-    $('per-person').textContent = n >= 2 ? formatMoney(share) : '—';
-    // How an uneven split adds up; the rounding choice only matters when it is not whole dollars each.
+    const share = splitShare(total, n, d.rounding || 'cent', code);
+    $('per-person').textContent = n >= 2 ? money(share) : '—';
+    // How an uneven split adds up; the rounding choice only matters when shares aren't whole units.
     $('h-split').textContent = n >= 2 && share * n !== total
-      ? (n - 1) + ' 人各 ' + formatMoney(share) + '，你 ' + formatMoney(total - share * (n - 1)) : '';
-    $('f-rounding').hidden = !(n >= 2 && total % (n * 100) !== 0);
+      ? t('hint.split', { k: n - 1, share: money(share), payer: money(total - share * (n - 1)) }) : '';
+    $('f-rounding').hidden = !(n >= 2 && total % (n * roundUnit(code)) !== 0);
     view.querySelectorAll('#f-rounding button').forEach((b) => b.setAttribute('aria-checked', String(b.dataset.mode === (d.rounding || 'cent'))));
   }
   const counter = $('note-count');
@@ -2081,7 +2349,7 @@ function onPrint(e) {
 
   // Lock the button right away; the write happens on the next tick so the locked state paints first.
   button.disabled = true;
-  button.textContent = '打印中…';
+  button.textContent = t('btn.printing');
   setTimeout(() => {
     try {
       printed = commit(result.input);
@@ -2092,9 +2360,9 @@ function onPrint(e) {
       renderStage();
     } catch (err) {
       button.disabled = false;
-      button.textContent = '打印';
+      button.textContent = t('btn.print');
       const msg = $('save-error');
-      msg.textContent = '小票未保存，请重试。';
+      msg.textContent = t('save.failed');
       msg.hidden = false;
     }
   }, 0);
@@ -2109,15 +2377,15 @@ function renderStage() {
   const feed = el('div', { class: 'feed' }, canvas);
   const viewIt = () => { printed = null; location.hash = '#/r/' + receipt.id; };
   const after = el('div', { class: 'after' }, [
-    el('p', { text: '✓ 已收进小票夹' }),
+    el('p', { text: t('stage.done') }),
     receipt.people >= 2 ? el('div', { class: 'copy' }, [
-      el('button', { type: 'button', class: 'link', text: '保存图片', onclick: () => saveImage(receipt) }),
+      el('button', { type: 'button', class: 'link', text: t('btn.saveImage'), onclick: () => saveImage(receipt) }),
       el('span', { text: '  ·  ', 'aria-hidden': 'true', style: 'color:var(--muted)' }),
-      el('button', { type: 'button', class: 'link', text: '复制群聊文案', onclick: () => copyChatText(receipt) }),
+      el('button', { type: 'button', class: 'link', text: t('btn.copyText'), onclick: () => copyChatText(receipt) }),
     ]) : null,
     el('div', { class: 'row' }, [
-      el('button', { class: 'btn secondary', text: '查看小票', onclick: viewIt }),
-      el('button', { class: 'btn', text: '再印一张', onclick: () => { printed = null; renderForm(); window.scrollTo(0, 0); } }),
+      el('button', { class: 'btn secondary', text: t('btn.view'), onclick: viewIt }),
+      el('button', { class: 'btn', text: t('btn.again'), onclick: () => { printed = null; renderForm(); window.scrollTo(0, 0); } }),
     ]),
   ]);
   view.replaceChildren(el('div', { class: 'stage' }, [el('div', { class: 'slot', 'aria-hidden': 'true' }), feed, after]));
@@ -2134,7 +2402,7 @@ function renderStage() {
     feed.classList.add('done');
     after.classList.add('show');
     canvas.addEventListener('click', viewIt);
-    announce('已收进小票夹');
+    announce(t('stage.saved'));
   };
   if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
     feed.classList.add('instant');
@@ -2149,12 +2417,12 @@ function renderStage() {
 /* Receipt folder */
 
 function renderList() {
-  setChrome('小票夹', 'receipts');
+  setChrome(t('list.title'), 'receipts', null, langButton());
   if (!state.receipts.length) {
     view.replaceChildren(el('div', { class: 'empty' }, [
-      el('h2', { text: '还没有小票' }),
-      el('p', { text: '把值得记住的花费印成一张小票。' }),
-      el('a', { class: 'btn small', href: '#/new', text: '印第一张', style: 'text-decoration:none;display:inline-block' }),
+      el('h2', { text: t('list.empty') }),
+      el('p', { text: t('list.emptyBody') }),
+      el('a', { class: 'btn small', href: '#/new', text: t('list.first'), style: 'text-decoration:none;display:inline-block' }),
     ]));
     return;
   }
@@ -2162,7 +2430,7 @@ function renderList() {
     el('li', {}, el('a', { href: '#/r/' + r.id }, [
       el('div', { class: 'thumb' }, thumbnail(r)),
       el('div', { class: 'meta' }, [el('b', { text: r.title }), el('span', { text: displayRange(r.purchaseDate, r.endDate) })]),
-      el('div', { class: 'amt', text: formatMoney(r.totalMinor) }),
+      el('div', { class: 'amt', text: formatMoney(r.totalMinor, r.currency) }),
     ])))));
 }
 
@@ -2172,13 +2440,13 @@ function renderDetail(id, keepScroll) {
   const r = state.receipts.find((x) => x.id === id);
   if (!r) { location.replace('#/receipts'); return; }
 
-  const back = el('a', { class: 'icon-btn', href: '#/receipts', text: '‹ 小票夹',
+  const back = el('a', { class: 'icon-btn', href: '#/receipts', text: t('back'),
     style: 'display:inline-flex;align-items:center;text-decoration:none;color:inherit' });
   const menu = el('div', { class: 'menu', hidden: '', role: 'menu' }, [
-    el('button', { role: 'menuitem', text: '保存图片', onclick: () => { menu.hidden = true; saveImage(r); } }),
-    el('button', { role: 'menuitem', class: 'danger', text: '删除小票', onclick: () => { menu.hidden = true; confirmDelete(r); } }),
+    el('button', { role: 'menuitem', text: t('btn.saveImage'), onclick: () => { menu.hidden = true; saveImage(r); } }),
+    el('button', { role: 'menuitem', class: 'danger', text: t('menu.delete'), onclick: () => { menu.hidden = true; confirmDelete(r); } }),
   ]);
-  const more = el('button', { class: 'icon-btn', 'aria-label': '更多', 'aria-haspopup': 'menu', text: '•••',
+  const more = el('button', { class: 'icon-btn', 'aria-label': t('aria.more'), 'aria-haspopup': 'menu', text: '•••',
     onclick: (e) => { e.stopPropagation(); menu.hidden = !menu.hidden; } });
   setChrome('', 'receipts', back, el('div', { style: 'position:relative' }, [more, menu]));
 
@@ -2187,15 +2455,15 @@ function renderDetail(id, keepScroll) {
     drawReceipt(r),
     // A split receipt is usually about to be sent to the group, so its actions sit right below it.
     r.people >= 2 ? el('div', { class: 'actions' }, [
-      el('button', { class: 'btn secondary small', text: '保存图片', onclick: () => saveImage(r) }),
-      el('button', { class: 'btn small', text: '复制群聊文案', onclick: () => copyChatText(r) }),
+      el('button', { class: 'btn secondary small', text: t('btn.saveImage'), onclick: () => saveImage(r) }),
+      el('button', { class: 'btn small', text: t('btn.copyText'), onclick: () => copyChatText(r) }),
     ]) : null,
     r.people >= 2 ? renderProgress(r) : null,
     el('section', { class: 'card' }, [
-      el('div', { class: 'card-head' }, el('h2', { text: '更换样式' })),
+      el('div', { class: 'card-head' }, el('h2', { text: t('card.restyle') })),
       stylePicker(THEMES[r.style] ? r.style : 'thermal', (key) => {
         try { restyleReceipt(r.id, key); renderDetail(r.id, true); }
-        catch (err) { toast('样式未保存，请重试。'); }
+        catch (err) { toast(t('toast.styleFail')); }
       }),
     ]),
   ]));
@@ -2210,48 +2478,48 @@ function renderProgress(r) {
   const save = (participants, msg) => {
     const wasSettled = isSettled(r);
     try { updateReceipt(r.id, { participants: participants.length ? participants : null }); }
-    catch (err) { toast('未保存，请重试。'); return; }
+    catch (err) { toast(t('toast.saveFail')); return; }
     const now = state.receipts.find((x) => x.id === r.id);
     renderDetail(r.id, true);
-    if (!wasSettled && isSettled(now)) toast('全部收齐，小票已盖章');
+    if (!wasSettled && isSettled(now)) toast(t('toast.settled'));
     else if (msg) announce(msg);
   };
   const addFrom = (input) => {
     const add = splitNames(input.value).filter((n) => !ps.some((p) => p.name === n));
     if (!add.length) { input.value = ''; return; }
-    if (add.some((n) => len(n) > NAME_MAX)) { toast('名字最多 ' + NAME_MAX + ' 个字。'); return; }
-    if (ps.length + add.length > owed) { toast('最多 ' + owed + ' 人（' + r.people + ' 人里不含你自己）。'); return; }
+    if (add.some((n) => len(n) > NAME_MAX)) { toast(t('toast.nameLong', { n: NAME_MAX })); return; }
+    if (ps.length + add.length > owed) { toast(t('toast.maxNames', { owed, people: r.people })); return; }
     save(ps.concat(add.map((name) => ({ name, paid: false }))));
     const again = $('add-name'); if (again) again.focus();
   };
 
   const rows = ps.map((p, i) => el('li', { class: 'pg-row' + (p.paid ? ' paid' : '') }, [
-    el('button', { type: 'button', class: 'pg-check', role: 'checkbox', 'aria-checked': String(!!p.paid), 'aria-label': p.name + ' 已转账',
+    el('button', { type: 'button', class: 'pg-check', role: 'checkbox', 'aria-checked': String(!!p.paid), 'aria-label': t('aria.paid', { name: p.name }),
       onclick: () => save(ps.map((x, j) => j === i ? Object.assign({}, x, { paid: !x.paid, paidAt: !x.paid ? Date.now() : null }) : x),
-        p.name + (p.paid ? ' 改为未转' : ' 已转')) }, [
+        t(p.paid ? 'ann.unpaid' : 'ann.paid', { name: p.name })) }, [
       el('span', { class: 'box-mark', 'aria-hidden': 'true' }),
       el('span', { class: 'pg-name', text: p.name }),
-      el('span', { class: 'pg-amt', text: p.paid ? '已转' : formatMoney(shareMinor(r)) }),
+      el('span', { class: 'pg-amt', text: p.paid ? t('pg.paid') : formatMoney(shareMinor(r), r.currency) }),
     ]),
-    el('button', { type: 'button', class: 'pg-remove', 'aria-label': '从名单移除 ' + p.name, text: '×',
-      onclick: () => save(ps.filter((_, j) => j !== i), '已移除 ' + p.name) }),
+    el('button', { type: 'button', class: 'pg-remove', 'aria-label': t('aria.removeFromList', { name: p.name }), text: '×',
+      onclick: () => save(ps.filter((_, j) => j !== i), t('ann.removed', { name: p.name })) }),
   ]));
 
   const left = owed - ps.length;
-  const input = el('input', { id: 'add-name', type: 'text', autocomplete: 'off', enterkeyhint: 'done', 'aria-label': '添加名字',
-    placeholder: ps.length ? '还有 ' + left + ' 人没填名字' : '填上名字，转了就打勾',
+  const input = el('input', { id: 'add-name', type: 'text', autocomplete: 'off', enterkeyhint: 'done', 'aria-label': t('aria.addName'),
+    placeholder: ps.length ? t('pg.phLeft', { n: left }) : t('pg.ph'),
     onkeydown: (e) => { if (e.key === 'Enter' && !e.isComposing) { e.preventDefault(); addFrom(e.target); } } });
   const suggestions = left > 0 ? recentNames().filter((n) => !ps.some((p) => p.name === n)).slice(0, 8) : [];
 
-  return el('section', { class: 'card progress', 'aria-label': '收款进度' }, [
+  return el('section', { class: 'card progress', 'aria-label': t('pg.title') }, [
     el('div', { class: 'pg-head' }, [
-      el('b', { text: '收款进度' }),
-      el('span', { text: ps.length ? paid + '/' + owed + ' 人 · 已收 ' + formatMoney(paid * shareMinor(r)) : owed + ' 人待转' }),
+      el('b', { text: t('pg.title') }),
+      el('span', { text: ps.length ? t('pg.status', { paid, owed, amt: formatMoney(paid * shareMinor(r), r.currency) }) : t('pg.waiting', { n: owed }) }),
     ]),
     rows.length ? el('ul', { class: 'pg-list' }, rows) : null,
     left > 0 ? el('div', { class: 'pg-add' }, [
       el('div', { class: 'box' }, input),
-      el('button', { type: 'button', class: 'btn secondary small', text: '添加', onclick: () => addFrom(input) }),
+      el('button', { type: 'button', class: 'btn secondary small', text: t('btn.add'), onclick: () => addFrom(input) }),
     ]) : null,
     suggestions.length ? el('div', { class: 'suggest' }, suggestions.map((n) =>
       el('button', { type: 'button', text: '+ ' + n, onclick: () => { input.value = n; addFrom(input); } }))) : null,
@@ -2263,7 +2531,7 @@ document.addEventListener('click', () => document.querySelectorAll('.menu').forE
 async function saveImage(r) {
   try {
     const blob = await exportBlob(r);
-    const name = '小票-' + r.purchaseDate + '.png';
+    const name = t('file.prefix') + '-' + r.purchaseDate + '.png';
     const file = new File([blob], name, { type: 'image/png' });
     // On phones the share sheet offers "Save Image"; elsewhere download the file.
     if (window.matchMedia('(pointer: coarse)').matches && navigator.canShare && navigator.canShare({ files: [file] })) {
@@ -2274,32 +2542,37 @@ async function saveImage(r) {
     const a = el('a', { href: url, download: name });
     document.body.append(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 5000);
-    toast('图片已保存');
+    toast(t('toast.imgSaved'));
   } catch (err) {
     if (err && err.name === 'AbortError') return;
-    toast('图片保存失败，请重试。');
+    toast(t('toast.imgFail'));
   }
 }
 
 // A message to paste into the group chat next to the receipt image, with the payment link to tap.
 function chatText(r) {
   const lines = [r.title + ' · ' + displayRange(r.purchaseDate, r.endDate)];
-  const extras = [r.taxMinor ? '税' : '', r.tipMinor ? '小费' : ''].filter(Boolean).join('和');
-  lines.push('合计 ' + formatMoney(r.totalMinor) + (extras ? '（含' + extras + '）' : '') +
-    (r.people >= 2 ? '，' + r.people + ' 人，每人 ' + formatMoney(shareMinor(r)) +
-      (r.rounding === 'up' ? '（凑整）' : r.rounding === 'down' ? '（抹零）' : '') : ''));
+  const money = (m) => formatMoney(m, r.currency);
+  const extras = [r.taxMinor ? t('chat.tax') : '', r.tipMinor ? t('chat.tip') : ''].filter(Boolean).join(t('chat.and'));
+  lines.push(t('chat.total', { total: money(r.totalMinor) }) + (extras ? t('chat.incl', { what: extras }) : '') +
+    (r.people >= 2 ? t('chat.split', { n: r.people, share: money(shareMinor(r)) }) +
+      (r.rounding === 'up' ? t('chat.up') : r.rounding === 'down' ? t('chat.down') : '') : ''));
   // Before anyone pays it lists the group; after that it says who is still due.
   const ps = r.people >= 2 ? participantsOf(r) : [];
   const unpaid = ps.filter((p) => !p.paid).map((p) => p.name);
-  if (isSettled(r)) { lines.push('已全部收齐，谢谢大家！'); return lines.join('\n'); }
-  if (ps.length && unpaid.length === ps.length) lines.push('名单：' + unpaid.join('、'));
-  else if (ps.length) lines.push('还差：' + (unpaid.length ? unpaid.join('、') : '') + (ps.length < owedCount(r) ? (unpaid.length ? '，' : '') + '还有 ' + (owedCount(r) - ps.length) + ' 人' : ''));
+  const sep = t('list.sep');
+  if (isSettled(r)) { lines.push(t('chat.settled')); return lines.join('\n'); }
+  if (ps.length && unpaid.length === ps.length) lines.push(t('chat.names', { list: unpaid.join(sep) }));
+  else if (ps.length) {
+    const left = owedCount(r) - ps.length;
+    lines.push(t('chat.owing', { list: unpaid.concat(left > 0 ? [t('chat.more', { n: left })] : []).join(sep) }));
+  }
   if (r.pay && PAY_METHODS[r.pay.method]) {
     const link = payLink(r);
+    const name = PAY_METHODS[r.pay.method].name;
     // A WeChat code is not a link anyone can tap; it is read from the receipt image instead.
-    if (r.pay.method === 'wechat') lines.push('微信：长按小票图片，识别二维码付款');
-    else lines.push(link ? PAY_METHODS[r.pay.method].name + ' 点这里付：' + link
-      : PAY_METHODS[r.pay.method].name + ' 转账至：' + payDisplay(r.pay));
+    if (r.pay.method === 'wechat') lines.push(t('chat.wechat'));
+    else lines.push(link ? t('chat.payLink', { name, link }) : t('chat.payTo', { name, acct: payDisplay(r.pay) }));
   }
   return lines.join('\n');
 }
@@ -2315,9 +2588,9 @@ async function copyChatText(r) {
     document.body.append(ta); ta.select();
     const ok = document.execCommand && document.execCommand('copy');
     ta.remove();
-    if (!ok) { toast('复制失败，请重试。'); return; }
+    if (!ok) { toast(t('toast.copyFail')); return; }
   }
-  toast('文案已复制，粘贴到群里就行');
+  toast(t('toast.copied'));
 }
 
 function confirmDelete(r) {
@@ -2326,7 +2599,7 @@ function confirmDelete(r) {
   $('confirm-ok').onclick = () => {
     dialog.close();
     try { removeReceipt(r.id); location.hash = '#/receipts'; }
-    catch (err) { toast('删除失败，请重试。'); }
+    catch (err) { toast(t('toast.delFail')); }
   };
   dialog.showModal();
 }
@@ -2340,6 +2613,7 @@ function route() {
   if (printed) return renderStage();
   renderForm();
 }
+applyStatic();
 window.addEventListener('hashchange', route);
 // Another tab changed the data: pick it up.
 window.addEventListener('storage', (e) => {
