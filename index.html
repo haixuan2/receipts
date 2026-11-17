@@ -62,17 +62,29 @@
 
   .items { margin-bottom: 18px; }
   .item { margin-bottom: 12px; }
-  .item .row { display: grid; grid-template-columns: minmax(0, 1fr) 118px 34px; gap: 8px; align-items: center; }
-  .item.solo .row { grid-template-columns: minmax(0, 1fr) 118px; }
+  .item .row { display: grid; grid-template-columns: minmax(0, 1fr) 138px 30px; gap: 8px; align-items: center; }
+  .item.solo .row { grid-template-columns: minmax(0, 1fr) 138px; }
   .item .box { padding: 0 12px; }
   .item .box input { font-size: 16px; padding: 12px 0; }
   .item .remove { border: 0; background: none; color: var(--muted); font-size: 22px; line-height: 1; height: 34px; width: 34px; border-radius: 999px; padding: 0; }
   .item .remove:hover { background: #e4e1da; color: var(--ink); }
-  .cat { margin-top: 6px; display: flex; align-items: center; gap: 8px; }
+  .under { margin-top: 6px; }
+  .cat { display: flex; align-items: center; gap: 8px; }
   .cat select, .cat input { font-size: 16px; border: 0; border-radius: 999px; background: #e7e4dc; padding: 5px 12px; max-width: 200px; height: 32px; }
   .cat select { appearance: none; -webkit-appearance: none; padding-right: 26px; background-image: linear-gradient(45deg, transparent 50%, #77737c 50%), linear-gradient(135deg, #77737c 50%, transparent 50%); background-position: calc(100% - 15px) 14px, calc(100% - 10px) 14px; background-size: 5px 5px; background-repeat: no-repeat; }
   .cat select.none { color: var(--muted); }
   .cat input { background: var(--card); width: 150px; }
+  .under { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .hint { font-family: var(--mono); font-size: 12.5px; color: var(--muted); text-align: right; overflow-wrap: anywhere; }
+  .plus { border: 0; background: #ece9e2; color: var(--ink); width: 26px; height: 26px; flex: none; border-radius: 999px; padding: 0; font-size: 17px; line-height: 1; font-family: var(--sans); }
+  .people { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line); }
+  .people-row { display: flex; align-items: center; gap: 10px; }
+  .people-row label { font-size: 13px; font-weight: 650; color: var(--muted); white-space: nowrap; }
+  .people-row label small { font-weight: 500; }
+  .people-row .box { width: 84px; padding: 0 12px; }
+  .people-row .box input { font-size: 16px; padding: 10px 0; }
+  .people-row .per { margin-left: auto; font-family: var(--mono); font-size: 15px; font-weight: 600; }
+  .people.invalid .box { border-color: var(--error); }
   .items-foot { display: flex; justify-content: space-between; align-items: center; padding-top: 2px; }
   .link { border: 0; background: none; padding: 6px 0; font-weight: 600; font-size: 15px; }
   .running { font-family: var(--mono); font-size: 15px; font-weight: 600; }
@@ -91,6 +103,7 @@
   .swatch { width: 60px; height: 72px; overflow: hidden; border-radius: 3px; }
   .swatch canvas { width: 60px !important; height: auto !important; display: block; }
   .styles.inline { max-width: 340px; margin: 6px auto 0; }
+  .photo-preview .counter { text-align: center; }
 
   .more-link { display: block; margin-bottom: 18px; }
   .print-bar { position: sticky; bottom: calc(var(--tabs-h) + env(safe-area-inset-bottom)); background: linear-gradient(to top, var(--bg) 75%, transparent); padding: 14px 0 12px; margin-top: 6px; }
@@ -221,21 +234,13 @@ const AMOUNT_ERRORS = {
   range: '单项金额不能超过 $99,999.99。',
 };
 
-// Returns { minor } or { error }.
-function parseAmount(raw) {
-  let s = String(raw).trim();
-  if (!s) return { error: 'empty' };
-  let negative = false;
+// One number, e.g. "12", "12.5", "$12.50". Returns { minor } or { error }.
+function parseSingle(tok) {
+  let s = tok, negative = false;
   const stripMinus = () => { if (/^[-−]/.test(s)) { negative = true; s = s.slice(1); } };
   stripMinus();
   if (/^[$＄]/.test(s)) s = s.slice(1);
   stripMinus();
-  s = s.trim();
-  // Some keyboards type "," as the decimal separator.
-  if (!s.includes('.') && (s.match(/,/g) || []).length === 1 && s.length - s.lastIndexOf(',') - 1 <= 2) {
-    s = s.replace(',', '.');
-  }
-  s = s.replace(/,/g, '');
   const m = /^(\d*)(?:\.(\d*))?$/.exec(s);
   if (!m || (m[1] === '' && !m[2])) return { error: 'invalid' };
   if (negative) return { error: 'negative' };
@@ -243,14 +248,31 @@ function parseAmount(raw) {
   if (frac.length > 2) return { error: 'decimals' };
   const whole = m[1].replace(/^0+/, '');
   if (whole.length > 5) return { error: 'range' };
-  const minor = Number(whole || 0) * 100 + Number(frac.padEnd(2, '0'));
-  if (minor > MAX_MINOR) return { error: 'range' };
-  return { minor };
+  return { minor: Number(whole || 0) * 100 + Number(frac.padEnd(2, '0')) };
 }
+
+// An amount may be several numbers to add up: "18.2, 20.1, 5" or "18.2+20.1+5".
+// Commas (half- or full-width), "、", ";", "+" and spaces all mean "plus".
+// Returns { minor, parts } or { error }.
+function parseAmount(raw) {
+  const tokens = String(raw).trim().split(/[+＋,，、;；\s]+/).filter(Boolean);
+  if (!String(raw).trim()) return { error: 'empty' };
+  if (!tokens.length) return { error: 'invalid' };
+  const parts = [];
+  for (const tok of tokens) {
+    const one = parseSingle(tok);
+    if (one.error) return one;
+    parts.push(one.minor);
+  }
+  const minor = parts.reduce((a, b) => a + b, 0);
+  if (minor > MAX_MINOR) return { error: 'range' };
+  return { minor, parts };
+}
+const plainAmount = (minor) => (minor / 100).toFixed(2);
 
 const len = (s) => Array.from(s).length;
 
-// Error keys match form element ids: title, date, endDate, item-<row>, location, note.
+// Error keys match form element ids: title, date, endDate, item-<row>, people, location, note.
 // `focus` says which input of an item row the error belongs to.
 function validate(draft) {
   const errors = {}, focus = {};
@@ -265,7 +287,8 @@ function validate(draft) {
   else if (end && end < start) errors.endDate = '结束日期不能早于开始日期。';
 
   // Rows left completely blank are ignored. A single item may go unnamed (a one-amount receipt).
-  const rows = draft.items.map((it, i) => ({ i, name: it.name.trim(), amount: it.amount.trim(), category: (it.category || '').trim() }));
+  const rows = draft.items.map((it, i) => ({ i, name: it.name.trim(), amount: it.amount.trim(),
+    category: (it.category || '').trim(), parts: it.parts || [] }));
   const filled = rows.filter((r) => r.name || r.amount);
   const items = [];
   const fail = (r, msg, where) => { errors['item-' + r.i] = msg; focus['item-' + r.i] = where; };
@@ -276,7 +299,21 @@ function validate(draft) {
     else if (!r.name && (filled.length > 1 || r.category)) fail(r, '请填写项目名称。', 'name');
     else if (len(r.name) > LIMITS.itemName) fail(r, '项目名称最多 40 个字符。', 'name');
     else if (len(r.category) > LIMITS.category) fail(r, '分类最多 12 个字符。', 'name');
-    else items.push({ name: r.name, amountMinor: amount.minor, category: r.category });
+    else {
+      // The addends are kept so the receipt can show how the amount was reached: either still
+      // typed in the field, or remembered from when the field was collapsed to its sum.
+      const remembered = r.parts.length > 1 && r.parts.reduce((a, b) => a + b, 0) === amount.minor;
+      const parts = amount.parts.length > 1 ? amount.parts : remembered ? r.parts : [];
+      items.push({ name: r.name, amountMinor: amount.minor, category: r.category, parts });
+    }
+  }
+
+  // Splitting between people is optional; 1 person means no split.
+  const peopleText = String(draft.people || '').trim();
+  let people = null;
+  if (peopleText) {
+    if (!/^\d{1,2}$/.test(peopleText) || Number(peopleText) < 1) errors.people = '人数请填 1 到 99 的整数。';
+    else if (Number(peopleText) >= 2) people = Number(peopleText);
   }
 
   const location = draft.location.trim();
@@ -287,7 +324,7 @@ function validate(draft) {
   if (Object.keys(errors).length) return { errors, focus };
   return { errors, focus, input: {
     title, purchaseDate: start, endDate: end, items,
-    totalMinor: items.reduce((sum, it) => sum + it.amountMinor, 0),
+    totalMinor: items.reduce((sum, it) => sum + it.amountMinor, 0), people,
     location: location || null, note: note || null, photo: draft.photo || null,
     style: THEMES[draft.style] ? draft.style : 'thermal',
   } };
@@ -318,13 +355,13 @@ const FAIL_SAVE = new URLSearchParams(location.search).has('failsave'); // QA ho
 function newDraft(style) {
   const id = (crypto.randomUUID && crypto.randomUUID()) ||
     Array.from(crypto.getRandomValues(new Uint8Array(16)), (b) => b.toString(16).padStart(2, '0')).join('');
-  return { id, title: '', date: null, endDate: null, items: [{ name: '', amount: '', category: '' }],
-    location: '', note: '', photo: null, style: style || 'thermal' };
+  return { id, title: '', date: null, endDate: null, items: [{ name: '', amount: '', category: '', parts: [] }],
+    people: '', location: '', note: '', photo: null, style: style || 'thermal' };
 }
 
 // Receipts and drafts saved by earlier versions had one merchant and one amount, and no style.
 function upgradeReceipt(r) {
-  const out = Object.assign({ style: 'thermal' }, r);
+  const out = Object.assign({ style: 'thermal', people: null }, r);
   if (!Array.isArray(r.items)) Object.assign(out, {
     title: r.merchant, items: [{ name: '', amountMinor: r.amountMinor }], totalMinor: r.amountMinor,
     endDate: null, photo: null,
@@ -334,11 +371,12 @@ function upgradeReceipt(r) {
 function upgradeDraft(d) {
   if (!d) return newDraft();
   if (Array.isArray(d.items) && d.items.length) {
-    return Object.assign({ style: 'thermal' }, d, { items: d.items.map((it) => Object.assign({ category: '' }, it)) });
+    return Object.assign({ style: 'thermal', people: '' }, d,
+      { items: d.items.map((it) => Object.assign({ category: '', parts: [] }, it)) });
   }
   return Object.assign(newDraft(), {
     id: d.id, title: d.merchant || '', date: d.date || null,
-    items: [{ name: '', amount: d.amount || '', category: '' }], location: d.location || '', note: d.note || '',
+    items: [{ name: '', amount: d.amount || '', category: '', parts: [] }], location: d.location || '', note: d.note || '',
   });
 }
 
@@ -368,12 +406,26 @@ function saveDraft(draft) {
   try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) { /* keep in memory */ }
 }
 
+// Receipt number printed on the paper, like a till receipt: print date plus eight digits derived
+// from the receipt's unique ID, e.g. 261116-4827-0193. Stable for a given receipt.
+function receiptNo(id, createdAt) {
+  const d = new Date(createdAt || 0);
+  const two = (n) => String(n).padStart(2, '0');
+  const digits = String(hash32(id) % 100000000).padStart(8, '0');
+  return String(d.getFullYear()).slice(2) + two(d.getMonth() + 1) + two(d.getDate()) + '-' + digits.slice(0, 4) + '-' + digits.slice(4);
+}
+
 // The receipt takes the draft's ID, so retrying one submission can never create a second receipt.
 function commit(input) {
   if (FAIL_SAVE) throw new Error('simulated save failure');
   const id = state.draft.id;
   const existing = state.receipts.find((r) => r.id === id);
-  const receipt = existing || Object.assign({ id, currency: 'USD', createdAt: Date.now(), templateVersion: 3 }, input);
+  const now = new Date();
+  const receipt = existing || Object.assign({
+    id, currency: 'USD', createdAt: now.getTime(), templateVersion: 4,
+    no: receiptNo(id, now.getTime()),
+    printedAt: String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0'),
+  }, input);
   // The next draft starts in the style just used.
   write({ receipts: sorted(existing ? state.receipts : state.receipts.concat(receipt)), draft: newDraft(receipt.style) });
   return receipt;
@@ -389,11 +441,12 @@ function restyleReceipt(id, style) {
   thumbs.delete(id);
 }
 
-/* ---------- Photo: black-and-white pixel style ---------- */
-// A photo is reduced to a small 1-bit bitmap (dark/light pixels only) and stored as packed bits,
-// so it prints like a thermal printer would and costs only a couple of kilobytes.
+/* ---------- Photo ---------- */
+// A photo is reduced in the browser to a small greyscale bitmap (about 16 KB) and the original is
+// discarded. Each receipt style then prints that bitmap in its own way: dithered dots, halftone,
+// line screen, two-colour print, a taped snapshot, or four shades of green.
 
-const PHOTO_W = 126;          // bitmap width; drawn at 2 receipt pixels per dot
+const PHOTO_W = 126;          // bitmap width; most styles draw it at 2 receipt pixels per dot
 const PHOTO_MAX_RATIO = 1.25; // taller photos are centre-cropped
 
 function loadImage(file) {
@@ -433,40 +486,160 @@ async function photoFromFile(file) {
   acc = 0;
   for (let v = 255; v >= 0; v--) { acc += hist[v]; if (acc >= grey.length * 0.02) { hi = v; break; } }
   const span = Math.max(1, hi - lo);
-  for (let i = 0; i < grey.length; i++) grey[i] = Math.min(255, Math.max(0, (grey[i] - lo) * 255 / span));
+  let binary = '';
+  for (let i = 0; i < grey.length; i++) {
+    binary += String.fromCharCode(Math.round(Math.min(255, Math.max(0, (grey[i] - lo) * 255 / span))));
+  }
+  return { w, h, gray: btoa(binary) };
+}
 
-  // Atkinson dithering: crisp, high-contrast dots.
-  const bits = new Uint8Array(Math.ceil(w * h / 8));
+// Grey values 0–255. Photos saved by the first version only kept dark/light bits.
+function photoGray(photo) {
+  const g = new Float32Array(photo.w * photo.h);
+  if (photo.gray) {
+    const binary = atob(photo.gray);
+    for (let i = 0; i < g.length; i++) g[i] = binary.charCodeAt(i);
+  } else {
+    const binary = atob(photo.bits);
+    for (let i = 0; i < g.length; i++) g[i] = ((binary.charCodeAt(i >> 3) >> (i & 7)) & 1) ? 0 : 255;
+  }
+  return g;
+}
+
+// Atkinson dithering to `levels` evenly spaced tones. Returns a tone index per pixel (0 = darkest).
+function atkinson(src, w, h, levels) {
+  const g = Float32Array.from(src);
+  const out = new Uint8Array(w * h);
+  const stepSize = 255 / (levels - 1);
   const spread = [[1, 0], [2, 0], [-1, 1], [0, 1], [1, 1], [0, 2]];
   for (let y = 0; y < h; y++) {
     for (let x = 0; x < w; x++) {
       const i = y * w + x;
-      const dark = grey[i] < 128;
-      if (dark) bits[i >> 3] |= 1 << (i & 7);
-      const err = (grey[i] - (dark ? 0 : 255)) / 8;
+      const idx = Math.min(levels - 1, Math.max(0, Math.round(g[i] / stepSize)));
+      out[i] = idx;
+      const err = (g[i] - idx * stepSize) / 8;
       for (const [dx, dy] of spread) {
         const nx = x + dx, ny = y + dy;
-        if (nx >= 0 && nx < w && ny < h) grey[ny * w + nx] += err;
+        if (nx >= 0 && nx < w && ny < h) g[ny * w + nx] += err;
       }
     }
   }
-  let binary = '';
-  for (let i = 0; i < bits.length; i++) binary += String.fromCharCode(bits[i]);
-  return { w, h, bits: btoa(binary) };
+  return out;
 }
 
-// Draws a photo's dots; `px` is the size of one dot. On dark paper the light dots are inked instead.
-function drawPhoto(ctx, photo, x0, y0, px, invert) {
-  const binary = atob(photo.bits);
-  for (let y = 0; y < photo.h; y++) {
-    let runStart = -1;
-    for (let x = 0; x <= photo.w; x++) {
-      const i = y * photo.w + x;
-      const dark = ((binary.charCodeAt(i >> 3) >> (i & 7)) & 1) === 1;
-      const on = x < photo.w && (invert ? !dark : dark);
-      if (on && runStart < 0) runStart = x;
-      if (!on && runStart >= 0) { ctx.fillRect(x0 + runStart * px, y0 + y * px, (x - runStart) * px, px); runStart = -1; }
+const BAYER4 = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5];
+
+// Fills horizontal runs of pixels whose tone index equals `tone`.
+function fillTone(ctx, idx, w, h, tone, x0, y0, px) {
+  for (let y = 0; y < h; y++) {
+    let start = -1;
+    for (let x = 0; x <= w; x++) {
+      const on = x < w && idx[y * w + x] === tone;
+      if (on && start < 0) start = x;
+      if (!on && start >= 0) { ctx.fillRect(x0 + start * px, y0 + y * px, (x - start) * px, px); start = -1; }
     }
+  }
+}
+
+function photoHeight(T, photo, inner) {
+  if (T.photo === 'polaroid') return photo.h * (inner - 24) / photo.w + 12 + 30 + 12;
+  if (T.photo === 'gameboy') return Math.floor(photo.h / 2) * (inner / Math.floor(photo.w / 2));
+  return photo.h * inner / photo.w;
+}
+
+// Prints a photo in the style's own manner. `ink` is the ink layer (gets the uneven-print wear);
+// `paper` is the paper layer, used by styles whose photo is an object on the page, not ink.
+function paintPhoto(ink, paper, T, photo, x0, y0, inner, seed) {
+  const w = photo.w, h = photo.h, px = inner / w;
+  const g = photoGray(photo);
+  ink.fillStyle = T.ink;
+
+  if (T.photo === 'bayer') {
+    // Ordered dither: a regular woven texture, like a rubber stamp.
+    const idx = new Uint8Array(w * h);
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      idx[y * w + x] = g[y * w + x] < (BAYER4[(y & 3) * 4 + (x & 3)] + 0.5) * 16 ? 0 : 1;
+    }
+    fillTone(ink, idx, w, h, 0, x0, y0, px);
+  } else if (T.photo === 'riso') {
+    // Two-colour print: darks in the main ink, mid-tones in the accent colour.
+    const idx = atkinson(g, w, h, 3);
+    fillTone(ink, idx, w, h, 0, x0, y0, px);
+    ink.fillStyle = T.accent;
+    fillTone(ink, idx, w, h, 1, x0, y0, px);
+  } else if (T.photo === 'invert') {
+    // Dark paper: the light parts of the picture are what gets inked.
+    fillTone(ink, atkinson(g, w, h, 2), w, h, 1, x0, y0, px);
+  } else if (T.photo === 'halftone') {
+    // Newspaper halftone: dots on a staggered grid, bigger where the picture is darker.
+    const cell = 3;
+    ink.save();
+    ink.beginPath(); ink.rect(x0, y0, w * px, h * px); ink.clip();
+    for (let row = 0, cy = 0; cy < h; row++, cy += cell) {
+      for (let cx = (row % 2) * cell / 2 - cell / 2; cx < w; cx += cell) {
+        let sum = 0, n = 0;
+        for (let yy = cy; yy < Math.min(h, cy + cell); yy++) {
+          for (let xx = Math.max(0, Math.floor(cx)); xx < Math.min(w, Math.floor(cx) + cell); xx++) { sum += g[yy * w + xx]; n++; }
+        }
+        if (!n) continue;
+        const dark = 1 - sum / n / 255;
+        if (dark < 0.05) continue;
+        ink.beginPath();
+        ink.arc(x0 + (cx + cell / 2) * px, y0 + (cy + cell / 2) * px, cell * px * 0.56 * Math.sqrt(dark), 0, Math.PI * 2);
+        ink.fill();
+      }
+    }
+    ink.restore();
+  } else if (T.photo === 'lines') {
+    // Line screen: horizontal lines that swell with the tone, like a technical plot.
+    const cell = 2;
+    for (let cy = 0; cy < h; cy += cell) {
+      for (let x = 0; x < w; x++) {
+        const v = (g[cy * w + x] + g[Math.min(h - 1, cy + 1) * w + x]) / 2 / 255;
+        const amount = T.dark ? v : 1 - v;
+        const th = cell * px * 0.92 * amount;
+        if (th < 0.35) continue;
+        ink.fillRect(x0 + x * px, y0 + cy * px + (cell * px - th) / 2, px + 0.05, th);
+      }
+    }
+  } else if (T.photo === 'polaroid') {
+    // A greyscale snapshot taped to the page at a slight angle.
+    const s = (inner - 24) / w, pw = w * s, ph = h * s, fw = pw + 24, fh = ph + 12 + 30;
+    const tmp = document.createElement('canvas');
+    tmp.width = w; tmp.height = h;
+    const tctx = tmp.getContext('2d');
+    const data = tctx.createImageData(w, h);
+    for (let i = 0; i < g.length; i++) {
+      data.data[i * 4] = g[i] * 0.96 + 8; data.data[i * 4 + 1] = g[i] * 0.95 + 6; data.data[i * 4 + 2] = g[i] * 0.92 + 4; data.data[i * 4 + 3] = 255;
+    }
+    tctx.putImageData(data, 0, 0);
+    const tilt = (rng(seed ^ 0x9e3779b9)() - 0.5) * 0.07;
+    paper.save();
+    paper.translate(W / 2, y0 + 6 + fh / 2);
+    paper.rotate(tilt);
+    paper.shadowColor = 'rgba(0,0,0,0.22)'; paper.shadowBlur = 8; paper.shadowOffsetY = 2;
+    paper.fillStyle = '#fffefb'; paper.fillRect(-fw / 2, -fh / 2, fw, fh);
+    paper.shadowColor = 'transparent';
+    paper.imageSmoothingEnabled = true; paper.imageSmoothingQuality = 'high';
+    paper.drawImage(tmp, -pw / 2, -fh / 2 + 12, pw, ph);
+    paper.rotate(-0.05);
+    paper.fillStyle = 'rgba(238,196,92,0.6)'; paper.fillRect(-36, -fh / 2 - 8, 72, 18);
+    paper.restore();
+  } else if (T.photo === 'gameboy') {
+    // Four shades of green in chunky pixels.
+    const w2 = Math.floor(w / 2), h2 = Math.floor(h / 2), big = inner / w2;
+    const shades = ['#0f380f', '#306230', '#8bac0f', '#c5d68b'];
+    paper.fillStyle = shades[3]; paper.fillRect(x0, y0, w2 * big, h2 * big);
+    const idx = new Uint8Array(w2 * h2);
+    for (let y = 0; y < h2; y++) for (let x = 0; x < w2; x++) {
+      const v = (g[2 * y * w + 2 * x] + g[2 * y * w + 2 * x + 1] + g[(2 * y + 1) * w + 2 * x] + g[(2 * y + 1) * w + 2 * x + 1]) / 4;
+      idx[y * w2 + x] = Math.min(3, Math.max(0, Math.round(v / 85 + (BAYER4[(y & 3) * 4 + (x & 3)] + 0.5) / 16 - 0.5)));
+    }
+    for (let tone = 0; tone < 3; tone++) { paper.fillStyle = shades[tone]; fillTone(paper, idx, w2, h2, tone, x0, y0, big); }
+    paper.strokeStyle = shades[0]; paper.lineWidth = 2; paper.strokeRect(x0 - 1, y0 - 1, w2 * big + 2, h2 * big + 2);
+  } else {
+    // Thermal print: crisp black dots.
+    fillTone(ink, atkinson(g, w, h, 2), w, h, 0, x0, y0, px);
   }
 }
 
@@ -484,25 +657,46 @@ const THEMES = {
   thermal: {
     name: '热敏纸', paper: ['#fbf8f0', '#f8f4ea'], ink: '#211f24', accent: '#211f24',
     font: MONO, rule: 'dash', top: 'flat', bottom: 'torn', padTop: 30,
-    wear: 0.16, wearLines: 2, fibres: 1,
+    wear: 0.16, wearLines: 2, fibres: 1, photo: 'atkinson',
   },
   kraft: {
     name: '牛皮纸', paper: ['#d6b98d', '#caa978'], ink: '#38261a', accent: '#9c2f1c',
     font: SERIF, rule: 'double', top: 'zig', bottom: 'zig', padTop: 34,
-    wear: 0.1, wearLines: 0, fibres: 2.2, stamp: true,
+    wear: 0.1, wearLines: 0, fibres: 2.2, stamp: true, photo: 'bayer',
   },
   ticket: {
     name: '票根', paper: ['#fff7ef', '#fdeee3'], ink: '#22304f', accent: '#e2553f', band: '#e2553f',
-    font: SANS, rule: 'dot', top: 'scallop', bottom: 'scallop', padTop: 28,
-    wear: 0.04, wearLines: 0, fibres: 0, barcode: true,
+    font: SANS, rule: 'dot', top: 'scallop', bottom: 'scallop', padTop: 28, totalColor: 'accent',
+    wear: 0.04, wearLines: 0, fibres: 0, barcode: true, photo: 'riso',
   },
   midnight: {
-    name: '午夜', paper: ['#1f2437', '#141827'], ink: '#ece6d6', accent: '#f0c050',
-    font: MONO, rule: 'dash', ruleColor: 'accent', top: 'flat', bottom: 'torn', padTop: 30,
-    wear: 0.07, wearLines: 0, fibres: 0, stars: true, invertPhoto: true,
+    name: '午夜', paper: ['#1f2437', '#141827'], ink: '#ece6d6', accent: '#f0c050', dark: true,
+    font: MONO, rule: 'dash', ruleColor: 'accent', top: 'flat', bottom: 'torn', padTop: 30, totalColor: 'accent',
+    wear: 0.07, wearLines: 0, fibres: 0, stars: true, photo: 'invert',
+  },
+  notebook: {
+    name: '手帐', paper: ['#fdfcf6', '#faf8ef'], ink: '#2a3966', accent: '#d2483c',
+    font: SANS, rule: 'solid', top: 'flat', bottom: 'flat', padTop: 32, totalColor: 'accent',
+    wear: 0.05, wearLines: 0, fibres: 0, grid: { step: 12, color: 'rgba(70,120,190,0.17)' }, holes: true, photo: 'polaroid',
+  },
+  blueprint: {
+    name: '蓝图', paper: ['#2456a6', '#1c478f'], ink: '#eef4ff', accent: '#a9dcff', dark: true,
+    font: MONO, rule: 'solid', ruleColor: 'accent', top: 'flat', bottom: 'flat', padTop: 34, totalColor: 'accent',
+    wear: 0.05, wearLines: 0, fibres: 0, grid: { step: 12, color: 'rgba(255,255,255,0.07)', major: 5, majorColor: 'rgba(255,255,255,0.13)' },
+    frame: true, photo: 'lines',
+  },
+  newsprint: {
+    name: '报纸', paper: ['#ebe8e0', '#e1ded4'], ink: '#171717', accent: '#171717',
+    font: SERIF, titleSize: 26, masthead: true, rule: 'double', top: 'flat', bottom: 'torn', padTop: 26,
+    wear: 0.13, wearLines: 0, fibres: 1.4, photo: 'halftone',
+  },
+  gameboy: {
+    name: '掌机', paper: ['#cfdd9f', '#c5d593'], ink: '#0f380f', accent: '#306230',
+    font: MONO, rule: 'pixel', top: 'flat', bottom: 'zig', padTop: 30,
+    wear: 0.03, wearLines: 0, fibres: 0, photo: 'gameboy',
   },
 };
-const THEME_ORDER = ['thermal', 'kraft', 'ticket', 'midnight'];
+const THEME_ORDER = ['thermal', 'kraft', 'ticket', 'midnight', 'notebook', 'blueprint', 'newsprint', 'gameboy'];
 
 function hash32(str) {
   let h = 0x811c9dc5;
@@ -550,7 +744,8 @@ function wrap(ctx, text, maxWidth) {
   return lines;
 }
 
-// Paper outline. Top and bottom edges depend on the style; ticket stubs get a notch on each side.
+// Paper outline. Top and bottom edges depend on the style; ticket stubs get a notch on each side,
+// notebook pages get punched holes (added as extra sub-paths and cut out with the even-odd rule).
 function paperPath(ctx, T, H, rand, notchY) {
   const PI = Math.PI;
   const n = Math.floor(W / 14), step = W / n;
@@ -574,6 +769,8 @@ function paperPath(ctx, T, H, rand, notchY) {
     ctx.lineTo(W, H);
     for (let i = n - 1; i >= 0; i--) { const cx = (i + 0.5) * step; ctx.lineTo(cx + 5, H); ctx.arc(cx, H, 5, 0, PI, true); }
     ctx.lineTo(0, H);
+  } else if (T.bottom === 'flat') {
+    ctx.lineTo(W, H); ctx.lineTo(0, H);
   } else {
     ctx.lineTo(W, H - 2);
     let x = W, notch = true;
@@ -586,12 +783,17 @@ function paperPath(ctx, T, H, rand, notchY) {
 
   if (notchY) { ctx.lineTo(0, notchY + 7); ctx.arc(0, notchY, 7, PI / 2, -PI / 2, true); }
   ctx.closePath();
+
+  if (T.holes) {
+    for (let hy = 26; hy < H - 14; hy += 30) { ctx.moveTo(16.5, hy); ctx.arc(12, hy, 4.5, 0, PI * 2); }
+  }
 }
 
 function drawReceipt(r, scale) {
   scale = scale || Math.min(3, Math.max(2, window.devicePixelRatio || 1));
   const T = THEMES[r.style] || THEMES.thermal;
   const F = T.font;
+  const SMALL = F === SERIF ? SERIF : MONO; // fine print
   const inner = W - PAD_X * 2;
   const measure = document.createElement('canvas').getContext('2d');
   const ops = [];
@@ -609,22 +811,27 @@ function drawReceipt(r, scale) {
     }
   };
   const rule = () => { ops.push({ t: 'rule', y: y + 0.5 }); y += T.rule === 'double' ? 4 : 1; };
+  const bar = (h) => { ops.push({ t: 'bar', y, h }); y += h; };
+  const photo = () => { ops.push({ t: 'photo', photo: r.photo, y }); y += photoHeight(T, r.photo, inner); };
 
   // Header: title, date or date range, optional place, optional photo.
   const onBand = T.band ? 'paper' : 'ink';
-  text(r.title, 'bold 22px ' + F, 29, 'center', { color: onBand });
+  const titleSize = T.titleSize || 22;
+  if (T.masthead) { bar(3); y += 3; bar(1); y += 12; }
+  text(r.title, 'bold ' + titleSize + 'px ' + F, titleSize + 7, 'center', { color: onBand });
   y += T.band ? 6 : 10;
   text(displayRange(r.purchaseDate, r.endDate), '12px ' + F, 16, 'center', { spacing: 1, noWrap: true, color: onBand, alpha: T.band ? 0.92 : 1 });
+  if (T.masthead) { y += 10; bar(1); }
   if (T.band) {
     // Ticket: the header sits on a coloured band that takes the place of the first rule.
     bandBottom = y + 16;
     y = bandBottom + 16;
     if (r.location) { text(r.location, '12px ' + F, 17, 'center'); y += 10; }
-    if (r.photo) { ops.push({ t: 'photo', photo: r.photo, y, px: inner / r.photo.w }); y += r.photo.h * inner / r.photo.w + 16; }
+    if (r.photo) { photo(); y += 16; }
     y -= 14;
   } else {
-    if (r.location) { y += 5; text(r.location, '12px ' + F, 17, 'center'); }
-    if (r.photo) { y += 18; ops.push({ t: 'photo', photo: r.photo, y, px: inner / r.photo.w }); y += r.photo.h * inner / r.photo.w; }
+    if (r.location) { y += T.masthead ? 10 : 5; text(r.location, '12px ' + F, 17, 'center'); }
+    if (r.photo) { y += 18; photo(); }
     y += 20; rule();
   }
 
@@ -635,21 +842,25 @@ function drawReceipt(r, scale) {
     const itemFont = '13px ' + F;
     measure.font = itemFont;
     const amountW = Math.max(...r.items.map((it) => measure.measureText(formatMoney(it.amountMinor)).width));
+    const nameW = inner - amountW - 12;
     y += 14;
     groupItems(r.items).forEach((g, gi) => {
       if (gi) y += 14;
       if (g.name) {
-        const headFont = 'bold 12px ' + F;
         if (g.items.length > 1) {
           ops.push({ t: 'text', str: formatMoney(g.subtotal), font: '11px ' + F, align: 'right', y: y + 9, spacing: 0, alpha: 0.75, color: 'accent' });
         }
-        text(g.name, headFont, 18, 'left', { color: 'accent', spacing: 1, noWrap: true });
+        text(g.name, 'bold 12px ' + F, 18, 'left', { color: 'accent', spacing: 1, noWrap: true });
         y += 4;
       }
       g.items.forEach((it, i) => {
         if (i) y += 7;
         ops.push({ t: 'text', str: formatMoney(it.amountMinor), font: itemFont, align: 'right', y: y + 9, spacing: 0, alpha: 1, color: 'ink' });
-        text(it.name, itemFont, 18, 'left', { width: inner - amountW - 12 });
+        text(it.name, itemFont, 18, 'left', { width: nameW });
+        // An amount entered as a sum shows its addends, like a till listing each charge.
+        if (it.parts && it.parts.length > 1) {
+          text(it.parts.map(plainAmount).join(' + '), '10.5px ' + SMALL, 14, 'left', { width: nameW, alpha: 0.62 });
+        }
       });
     });
     y += 14; rule();
@@ -665,22 +876,32 @@ function drawReceipt(r, scale) {
   }
   const totalY = y + 17;
   ops.push({ t: 'text', str: '合计', font: '600 14px ' + F, align: 'left', y: totalY + 2, spacing: 3, alpha: 1, color: 'ink' });
-  ops.push({ t: 'text', str: total, font: 'bold ' + size + 'px ' + F, align: 'right', y: totalY, spacing: 0, alpha: 1, color: T.band || T.stars ? 'accent' : 'ink' });
+  ops.push({ t: 'text', str: total, font: 'bold ' + size + 'px ' + F, align: 'right', y: totalY, spacing: 0, alpha: 1, color: T.totalColor || 'ink' });
   if (T.stamp) ops.push({ t: 'stamp', x: 112, y: totalY - 2 });
-  y += 34 + 18;
+  y += 34;
+
+  // Optional split between people.
+  if (r.people >= 2) {
+    y += 8;
+    ops.push({ t: 'text', str: formatMoney(Math.round(r.totalMinor / r.people)), font: 'bold 15px ' + F, align: 'right', y: y + 10, spacing: 0, alpha: 1, color: 'ink' });
+    text('人均 · ' + r.people + ' 人', '12px ' + F, 20, 'left', { spacing: 1, alpha: 0.85, noWrap: true });
+  }
+  y += 18;
 
   if (r.note) { rule(); y += 16; text(r.note, '13px ' + F, 20, 'left'); y += 16; }
 
+  // Receipt number, as on a till receipt. The ticket style also prints it under a barcode.
+  const no = r.no || receiptNo(r.id, r.createdAt);
   if (T.barcode) {
     y += 6;
     ops.push({ t: 'barcode', y, h: 26 });
     y += 26 + 6;
-    text(r.id.replace(/-/g, '').slice(0, 12).toUpperCase(), '8px ' + MONO, 10, 'center', { spacing: 2, alpha: 0.6, noWrap: true });
-    y += 4;
+  } else {
+    y += 12;
   }
-
-  y += 14;
-  text('PERSONAL RECORD', '500 8.5px ' + (T.font === SERIF ? SERIF : MONO), 11, 'center', { spacing: 2.5, alpha: 0.7, noWrap: true });
+  text('NO. ' + no + (r.printedAt ? '  ' + r.printedAt : ''), '8.5px ' + MONO, 11, 'center', { spacing: 1.2, alpha: 0.75, noWrap: true });
+  y += 6;
+  text('PERSONAL RECORD', '500 8.5px ' + SMALL, 11, 'center', { spacing: 2.5, alpha: 0.6, noWrap: true });
   const H = Math.ceil(y + PAD_BOTTOM);
 
   const canvas = document.createElement('canvas');
@@ -691,10 +912,11 @@ function drawReceipt(r, scale) {
   canvas.className = 'receipt';
   const ctx = canvas.getContext('2d');
   ctx.scale(scale, scale);
-  const rand = rng(hash32(r.id));
+  const seed = hash32(r.id);
+  const rand = rng(seed);
 
   paperPath(ctx, T, H, rand, bandBottom);
-  ctx.clip();
+  ctx.clip('evenodd');
 
   // Paper.
   const grad = ctx.createLinearGradient(0, 0, 0, H);
@@ -721,6 +943,23 @@ function drawReceipt(r, scale) {
       ctx.fillRect(rand() * W, rand() * H, s, s);
     }
   }
+  if (T.grid) {
+    const line = (x1, y1, x2, y2) => { ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke(); };
+    ctx.lineWidth = 1;
+    for (let i = 1, gx = T.grid.step; gx < W; gx += T.grid.step, i++) {
+      ctx.strokeStyle = T.grid.major && i % T.grid.major === 0 ? T.grid.majorColor : T.grid.color;
+      line(gx + 0.5, 0, gx + 0.5, H);
+    }
+    for (let i = 1, gy = T.grid.step; gy < H; gy += T.grid.step, i++) {
+      ctx.strokeStyle = T.grid.major && i % T.grid.major === 0 ? T.grid.majorColor : T.grid.color;
+      line(0, gy + 0.5, W, gy + 0.5);
+    }
+  }
+  if (T.frame) {
+    ctx.strokeStyle = 'rgba(255,255,255,0.55)'; ctx.lineWidth = 1;
+    ctx.strokeRect(8.5, 8.5, W - 17, H - 17);
+    ctx.strokeRect(11.5, 11.5, W - 23, H - 23);
+  }
   if (T.band) {
     ctx.fillStyle = T.band; ctx.fillRect(0, 0, W, bandBottom);
     // Perforation between the stub header and the body.
@@ -746,13 +985,16 @@ function drawReceipt(r, scale) {
       const line = (yy, w) => { ink.lineWidth = w; ink.beginPath(); ink.moveTo(PAD_X, yy); ink.lineTo(W - PAD_X, yy); ink.stroke(); };
       if (T.rule === 'double') { line(op.y, 1.2); line(op.y + 3, 0.6); }
       else if (T.rule === 'dot') { ink.lineCap = 'round'; ink.setLineDash([0.1, 5]); line(op.y, 1.6); ink.lineCap = 'butt'; }
+      else if (T.rule === 'solid') line(op.y, 1);
+      else if (T.rule === 'pixel') { ink.setLineDash([2, 2]); line(op.y + 0.5, 2); }
       else { ink.setLineDash([4, 3]); line(op.y, 1); }
       continue;
     }
-    if (op.t === 'photo') { ink.fillStyle = T.ink; drawPhoto(ink, op.photo, PAD_X, op.y, op.px, T.invertPhoto); continue; }
+    if (op.t === 'bar') { ink.fillStyle = T.ink; ink.fillRect(PAD_X, op.y, inner, op.h); continue; }
+    if (op.t === 'photo') { paintPhoto(ink, ctx, T, op.photo, PAD_X, op.y, inner, seed); continue; }
     if (op.t === 'barcode') {
       // Decorative bars derived from the receipt ID; not a scannable code.
-      const bars = rng(hash32(r.id) ^ 0x51ed);
+      const bars = rng(seed ^ 0x51ed);
       ink.fillStyle = T.ink;
       let bx = PAD_X + 26;
       while (bx < W - PAD_X - 26) {
@@ -811,7 +1053,9 @@ function spokenText(r) {
     for (const it of g.items) if (it.name) parts.push(it.name + ' ' + formatMoney(it.amountMinor));
   }
   parts.push('合计 ' + formatMoney(r.totalMinor));
+  if (r.people >= 2) parts.push(r.people + ' 人，人均 ' + formatMoney(Math.round(r.totalMinor / r.people)));
   if (r.note) parts.push('备注：' + r.note);
+  parts.push('编号 ' + (r.no || receiptNo(r.id, r.createdAt)));
   return parts.join('。');
 }
 
@@ -1021,27 +1265,64 @@ function renderItems(d) {
         el('span', { text: '$', 'aria-hidden': 'true' }),
         el('input', {
           id: 'i-item-' + i + '-amount', type: 'text', inputmode: 'decimal', autocomplete: 'off', value: it.amount,
-          placeholder: '0.00', 'aria-label': '第 ' + (i + 1) + ' 项金额（美元）',
-          'aria-describedby': 'e-item-' + i, enterkeyhint: 'next',
-          oninput: (e) => { patchItem(i, { amount: e.target.value }); refresh(); },
+          placeholder: '0.00', 'aria-label': '第 ' + (i + 1) + ' 项金额（美元），可输入多个数字相加',
+          'aria-describedby': 'e-item-' + i + ' h-item-' + i, enterkeyhint: 'next',
+          // Typing by hand discards any remembered addends; they are rebuilt when the field is collapsed.
+          oninput: (e) => { patchItem(i, { amount: e.target.value, parts: [] }); refresh(); },
+          onchange: () => collapseAmount(i),
         }),
+        // Phone number pads have no comma or plus key, so offer one.
+        el('button', { type: 'button', class: 'plus', 'aria-label': '再加一笔金额', text: '+',
+          onclick: () => {
+            const input = $('i-item-' + i + '-amount');
+            const value = input.value.trim();
+            if (value && !/[+＋,，、]$/.test(value)) { input.value = value + '+'; patchItem(i, { amount: input.value, parts: [] }); refresh(); }
+            input.focus();
+          } }),
       ]),
       solo ? null : el('button', { type: 'button', class: 'remove', 'aria-label': '删除第 ' + (i + 1) + ' 项', text: '×',
         onclick: () => { customRows.clear(); patchDraft((n) => { n.items = n.items.filter((x, j) => j !== i); }); renderForm(); } }),
     ]),
-    renderCategory(d, i),
+    el('div', { class: 'under' }, [renderCategory(d, i), el('span', { class: 'hint', id: 'h-item-' + i })]),
     el('p', { class: 'error', id: 'e-item-' + i, role: 'alert', hidden: '' }),
   ]));
 
   const canAdd = d.items.length < LIMITS.items;
   return el('div', { class: 'items' }, [
-    el('div', { class: 'head' }, el('span', { class: 'label', text: '花费明细' })),
+    el('div', { class: 'head' }, [
+      el('span', { class: 'label', text: '花费明细' }),
+      el('span', { class: 'counter', text: '金额可连加，如 18.2+20.1+5' }),
+    ]),
     ...rows,
     el('div', { class: 'items-foot' }, [
       canAdd ? el('button', { type: 'button', class: 'link', id: 'add-item', text: '+ 添加一项', onclick: addItem }) : el('span'),
       el('div', { class: 'running' }, [el('span', { text: '合计' }), el('b', { id: 'running-total' })]),
     ]),
+    el('div', { class: 'people', id: 'f-people' }, [
+      el('div', { class: 'people-row' }, [
+        optionalLabel('人均', 'i-people'),
+        el('div', { class: 'box' }, el('input', {
+          id: 'i-people', type: 'text', inputmode: 'numeric', autocomplete: 'off', value: d.people || '',
+          placeholder: '人数', maxlength: '2', 'aria-describedby': 'e-people',
+          oninput: (e) => { patchDraft((n) => { n.people = e.target.value; }); refresh(); },
+        })),
+        el('span', { class: 'per', id: 'per-person' }),
+      ]),
+      el('p', { class: 'error', id: 'e-people', role: 'alert', hidden: '' }),
+    ]),
   ]);
+}
+
+// Replaces "18.2, 20.1, 5" in an amount field with its sum, remembering the addends for the receipt.
+function collapseAmount(i) {
+  const it = state.draft.items[i];
+  if (!it) return;
+  const a = parseAmount(it.amount);
+  if (a.error || a.parts.length < 2) return;
+  patchItem(i, { amount: plainAmount(a.minor), parts: a.parts });
+  const input = $('i-item-' + i + '-amount');
+  if (input) input.value = plainAmount(a.minor);
+  refresh();
 }
 
 // A new row starts in the previous row's category, so a run of items in one category is quick to enter.
@@ -1049,7 +1330,7 @@ function addItem() {
   const items = state.draft.items;
   if (items.length >= LIMITS.items) return;
   const category = items[items.length - 1].category || '';
-  patchDraft((n) => { n.items = n.items.concat({ name: '', amount: '', category }); });
+  patchDraft((n) => { n.items = n.items.concat({ name: '', amount: '', category, parts: [] }); });
   renderForm('i-item-' + (state.draft.items.length - 1) + '-name');
 }
 
@@ -1057,12 +1338,13 @@ function renderPhoto(d) {
   const head = el('div', { class: 'head' }, optionalLabel('照片'));
   if (d.photo) {
     const px = 2;
-    const c = el('canvas', { width: d.photo.w * px, height: d.photo.h * px, role: 'img', 'aria-label': '照片的黑白像素预览' });
+    const c = el('canvas', { width: d.photo.w * px, height: d.photo.h * px, role: 'img', 'aria-label': '照片预览' });
     const ctx = c.getContext('2d');
     ctx.fillStyle = INK;
-    drawPhoto(ctx, d.photo, 0, 0, px);
+    fillTone(ctx, atkinson(photoGray(d.photo), d.photo.w, d.photo.h, 2), d.photo.w, d.photo.h, 0, 0, 0, px);
     return el('div', { class: 'field' }, [head, el('div', { class: 'photo-preview' }, [
       c,
+      el('span', { class: 'counter', text: '印到小票上时，照片风格会随所选样式变化' }),
       el('button', { type: 'button', class: 'link', text: '移除照片',
         onclick: () => { patchDraft((n) => { n.photo = null; }); renderForm(); } }),
     ])]);
@@ -1080,26 +1362,31 @@ function renderPhoto(d) {
         toast('无法读取这张照片，换一张试试。');
       }
     } });
-  return el('div', { class: 'field' }, [head, el('label', { class: 'photo-pick' }, [file, '＋ 添加照片（会印成黑白像素风格）'])]);
+  return el('div', { class: 'field' }, [head, el('label', { class: 'photo-pick' }, [file, '＋ 添加照片'])]);
 }
 
 // Enter moves through the fields instead of printing, so a long list can be typed quickly.
+// In an amount field it first adds up whatever was typed.
 function onFormKey(e) {
   if (e.key !== 'Enter' || e.target.tagName !== 'INPUT' || e.isComposing) return;
   e.preventDefault();
   const id = e.target.id;
   const m = /^i-item-(\d+)-(name|amount|category)$/.exec(id);
   if (id === 'i-title') $('i-item-0-name').focus();
+  else if (id === 'i-people') e.target.blur();
   else if (m && m[2] === 'category') e.target.blur();
   else if (m && m[2] === 'name') $('i-item-' + m[1] + '-amount').focus();
   else if (m) {
+    const multi = (parseAmount(e.target.value).parts || []).length > 1;
+    collapseAmount(Number(m[1]));
+    if (multi) return; // stay on the field so the computed sum is seen
     const next = $('i-item-' + (Number(m[1]) + 1) + '-name');
     if (next) next.focus();
     else if (e.target.value.trim()) addItem();
   }
 }
 
-// Updates errors, the running total and the note counter in place (no re-render, so focus is kept).
+// Updates errors, hints, the running total and counters in place (no re-render, so focus is kept).
 function refresh() {
   const errors = attempted ? validate(state.draft).errors : {};
   view.querySelectorAll('.error[id^="e-"]').forEach((msg) => {
@@ -1113,11 +1400,26 @@ function refresh() {
       if (text) i.setAttribute('aria-invalid', 'true'); else i.removeAttribute('aria-invalid');
     });
   });
-  const total = state.draft.items.reduce((sum, it) => {
+
+  let total = 0;
+  state.draft.items.forEach((it, i) => {
     const a = parseAmount(it.amount);
-    return sum + (a.error ? 0 : a.minor);
-  }, 0);
+    if (!a.error) total += a.minor;
+    const hint = $('h-item-' + i);
+    if (!hint) return;
+    // While a sum is being typed show its result; once collapsed show what it was made of.
+    if (!a.error && a.parts.length > 1) hint.textContent = '= ' + formatMoney(a.minor);
+    else if (!a.error && it.parts && it.parts.length > 1 && it.parts.reduce((x, y) => x + y, 0) === a.minor) {
+      hint.textContent = it.parts.map(plainAmount).join(' + ');
+    } else hint.textContent = '';
+  });
   if ($('running-total')) $('running-total').textContent = formatMoney(total);
+
+  const per = $('per-person');
+  if (per) {
+    const n = /^\d{1,2}$/.test(String(state.draft.people || '').trim()) ? Number(state.draft.people) : 0;
+    per.textContent = n >= 2 ? '每人 ' + formatMoney(Math.round(total / n)) : '';
+  }
   const counter = $('note-count');
   if (counter) {
     const n = len(state.draft.note);

@@ -1,5 +1,5 @@
 // Offline support: try the network first so updates arrive, fall back to the cached copy.
-const CACHE = 'receipts-v3';
+const CACHE = 'receipts-v4';
 const FILES = ['./', 'index.html', 'manifest.webmanifest', 'icon.svg'];
 
 self.addEventListener('install', (event) => {
