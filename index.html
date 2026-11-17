@@ -85,6 +85,17 @@
   .people-row .box input { font-size: 16px; padding: 10px 0; }
   .people-row .per { margin-left: auto; font-family: var(--mono); font-size: 15px; font-weight: 600; }
   .people.invalid .box { border-color: var(--error); }
+  .names { margin-top: 14px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; background: var(--card); border: 1px solid transparent; border-radius: 12px; padding: 7px 8px; }
+  .chips:focus-within { border-color: #b9b4aa; }
+  .names.invalid .chips { border-color: var(--error); }
+  .chip { display: inline-flex; align-items: center; gap: 2px; background: #ece9e2; border-radius: 999px; padding: 4px 4px 4px 11px; font-size: 15px; }
+  .chip button { border: 0; background: none; color: var(--muted); width: 24px; height: 24px; border-radius: 999px; padding: 0; font-size: 17px; line-height: 1; }
+  .chip button:hover { background: #dcd8cf; color: var(--ink); }
+  .chips input { flex: 1; min-width: 120px; border: 0; outline: 0; background: transparent; font-size: 16px; padding: 5px 4px; }
+  .suggest { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .suggest button { border: 1px dashed #c9c4b9; background: none; border-radius: 999px; padding: 4px 11px; font-size: 14px; color: var(--muted); }
+  .suggest button:hover { color: var(--ink); border-color: var(--ink); }
   .pay { margin-top: 12px; }
   .pay-row { display: flex; align-items: center; gap: 10px; }
   .pay-row > label { font-size: 13px; font-weight: 650; color: var(--muted); white-space: nowrap; }
@@ -93,6 +104,26 @@
   .pay-row .box input { font-size: 16px; padding: 10px 0; }
   .pay-hint { margin: 6px 2px 0; }
   .pay.invalid .box { border-color: var(--error); }
+  .progress { width: 100%; max-width: 340px; margin-top: 22px; background: var(--card); border-radius: 16px; padding: 14px 14px 12px; }
+  .pg-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; }
+  .pg-head b { font-size: 15px; }
+  .pg-head span { color: var(--muted); font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .pg-list { list-style: none; margin: 0; padding: 0; }
+  .pg-row { display: flex; align-items: center; }
+  .pg-row + .pg-row { border-top: 1px solid var(--line); }
+  .pg-check { flex: 1; display: flex; align-items: center; gap: 12px; border: 0; background: none; padding: 11px 2px; text-align: left; min-width: 0; }
+  .box-mark { width: 22px; height: 22px; flex: none; border: 2px solid #b9b4aa; border-radius: 7px; position: relative; }
+  .paid .box-mark { background: var(--ink); border-color: var(--ink); }
+  .paid .box-mark::after { content: ""; position: absolute; left: 6px; top: 2px; width: 5px; height: 10px; border: solid #fff; border-width: 0 2.5px 2.5px 0; transform: rotate(45deg); }
+  .pg-name { flex: 1; font-size: 16px; font-weight: 600; overflow-wrap: anywhere; }
+  .paid .pg-name { color: var(--muted); }
+  .pg-amt { font-family: var(--mono); font-size: 14px; color: var(--muted); }
+  .pg-remove { border: 0; background: none; color: var(--muted); width: 32px; height: 32px; border-radius: 999px; font-size: 19px; padding: 0; }
+  .pg-remove:hover { background: #ece9e2; color: var(--ink); }
+  .pg-add { display: flex; gap: 8px; margin-top: 8px; }
+  .pg-add .box { flex: 1; background: var(--bg); }
+  .pg-add .box input { font-size: 16px; padding: 10px 0; }
+  .progress .suggest { margin-top: 10px; }
   .actions { display: flex; gap: 10px; width: 100%; max-width: 340px; margin-top: 18px; }
   .actions .btn { flex: 1; }
   .after .copy { margin: -6px 0 8px; }
@@ -343,6 +374,26 @@ function savePayPref(pay) {
   try { localStorage.setItem(PAY_KEY, JSON.stringify(pay)); } catch (e) { /* not critical */ }
 }
 
+// Who owes the payer: on a split receipt the payer is one of the people, so up to people − 1 names.
+// Each has a paid tick, ticked off on the detail page; once everyone has paid the receipt gets a stamp.
+const NAME_MAX = 12;
+function participantsOf(r) { return Array.isArray(r.participants) ? r.participants : []; }
+function owedCount(r) { return r.people >= 2 ? r.people - 1 : 0; }
+function isSettled(r) {
+  const p = participantsOf(r);
+  return owedCount(r) > 0 && p.length === owedCount(r) && p.every((x) => x.paid);
+}
+// "小王, 小李、阿杰" → ['小王', '小李', '阿杰']
+function splitNames(raw) { return String(raw || '').split(/[,，、;；\s]+/).map((s) => s.trim()).filter(Boolean); }
+// Names used on earlier receipts, most recent first, so a regular group is a few taps away.
+function recentNames() {
+  const seen = new Set(), out = [];
+  for (const r of state.receipts.slice().sort((a, b) => b.createdAt - a.createdAt)) {
+    for (const p of participantsOf(r)) if (!seen.has(p.name)) { seen.add(p.name); out.push(p.name); }
+  }
+  return out;
+}
+
 // Error keys match form element ids: title, date, endDate, item-<row>, people, location, note.
 // `focus` says which input of an item row the error belongs to.
 function validate(draft) {
@@ -387,6 +438,9 @@ function validate(draft) {
     else if (Number(peopleText) >= 2) people = Number(peopleText);
   }
 
+  const names = Array.from(new Set((draft.names || []).map((s) => s.trim()).filter(Boolean)));
+  if (people && names.length > people - 1) errors.names = '名单最多 ' + (people - 1) + ' 人（' + people + ' 人里不含你自己），请删掉几个名字或改人数。';
+
   // A payment account is only printed on a split receipt.
   let pay = null;
   const method = draft.pay && PAY_METHODS[draft.pay.method] ? draft.pay.method : '';
@@ -406,6 +460,7 @@ function validate(draft) {
   return { errors, focus, input: {
     title, purchaseDate: start, endDate: end, items,
     totalMinor: items.reduce((sum, it) => sum + it.amountMinor, 0), people, pay,
+    participants: people && names.length ? names.map((name) => ({ name, paid: false })) : null,
     location: location || null, note: note || null, photo: draft.photo || null,
     style: THEMES[draft.style] ? draft.style : 'thermal',
   } };
@@ -437,7 +492,7 @@ function newDraft(style) {
   const id = (crypto.randomUUID && crypto.randomUUID()) ||
     Array.from(crypto.getRandomValues(new Uint8Array(16)), (b) => b.toString(16).padStart(2, '0')).join('');
   return { id, title: '', date: null, endDate: null, items: [{ name: '', amount: '', category: '', parts: [] }],
-    people: '', pay: loadPayPref(), location: '', note: '', photo: null, style: style || 'thermal' };
+    people: '', names: [], pay: loadPayPref(), location: '', note: '', photo: null, style: style || 'thermal' };
 }
 
 // Receipts and drafts saved by earlier versions had one merchant and one amount, and no style.
@@ -452,7 +507,7 @@ function upgradeReceipt(r) {
 function upgradeDraft(d) {
   if (!d) return newDraft();
   if (Array.isArray(d.items) && d.items.length) {
-    return Object.assign({ style: 'thermal', people: '', pay: loadPayPref() }, d,
+    return Object.assign({ style: 'thermal', people: '', names: [], pay: loadPayPref() }, d,
       { items: d.items.map((it) => Object.assign({ category: '', parts: [] }, it)) });
   }
   return Object.assign(newDraft(), {
@@ -519,7 +574,10 @@ function removeReceipt(id) {
 }
 
 function restyleReceipt(id, style) {
-  write({ receipts: state.receipts.map((r) => r.id === id ? Object.assign({}, r, { style }) : r), draft: state.draft });
+  updateReceipt(id, { style });
+}
+function updateReceipt(id, change) {
+  write({ receipts: state.receipts.map((r) => r.id === id ? Object.assign({}, r, change) : r), draft: state.draft });
   thumbs.delete(id);
 }
 
@@ -968,6 +1026,26 @@ function drawReceipt(r, scale) {
     ops.push({ t: 'text', str: formatMoney(Math.round(r.totalMinor / r.people)), font: 'bold 15px ' + F, align: 'right', y: y + 10, spacing: 0, alpha: 1, color: 'ink' });
     text('人均 · ' + r.people + ' 人', '12px ' + F, 20, 'left', { spacing: 1, alpha: 0.85, noWrap: true });
   }
+  // Who owes the payer, two to a row, each with a box that is ticked once they have paid.
+  const participants = r.people >= 2 ? participantsOf(r) : [];
+  if (participants.length) {
+    y += 10;
+    const nameFont = '12px ' + F;
+    measure.font = nameFont;
+    const colW = inner / 2;
+    participants.forEach((p, i) => {
+      const x = PAD_X + (i % 2) * colW;
+      const rowY = y + Math.floor(i / 2) * 22;
+      let name = p.name;
+      while (name.length > 1 && measure.measureText(name).width > colW - 22) name = name.slice(0, -1);
+      if (name !== p.name) name = name.slice(0, -1) + '…';
+      ops.push({ t: 'check', x, y: rowY + 5, paid: !!p.paid });
+      ops.push({ t: 'text', str: name, font: nameFont, align: 'left', x: x + 17, y: rowY + 10, spacing: 0, alpha: p.paid ? 0.6 : 1, color: 'ink' });
+    });
+    y += Math.ceil(participants.length / 2) * 22 - 4;
+  }
+  // Once everyone has paid, a stamp gets its own space under the list so it hides no figures.
+  if (isSettled(r)) { y += 16; ops.push({ t: 'settled', x: W / 2, y: y + 24 }); y += 50; }
   y += 18;
 
   // Getting paid back: a QR code that opens the payment for the per-person amount.
@@ -1104,6 +1182,36 @@ function drawReceipt(r, scale) {
     if (op.t === 'bar') { ink.fillStyle = T.ink; ink.fillRect(PAD_X, op.y, inner, op.h); continue; }
     if (op.t === 'photo') { paintPhoto(ink, ctx, T, op.photo, PAD_X, op.y, inner, seed); continue; }
     if (op.t === 'qr') continue; // drawn after the ink layer so wear never touches it
+    if (op.t === 'check') {
+      ink.strokeStyle = T.ink; ink.lineWidth = 1;
+      ink.strokeRect(op.x + 0.5, op.y + 0.5, 10, 10);
+      if (op.paid) {
+        ink.strokeStyle = colors[T.accent === T.ink ? 'ink' : 'accent'];
+        ink.lineWidth = 2; ink.lineCap = 'round'; ink.lineJoin = 'round';
+        ink.beginPath(); ink.moveTo(op.x + 2, op.y + 5.5); ink.lineTo(op.x + 4.8, op.y + 8.5); ink.lineTo(op.x + 11.5, op.y - 1); ink.stroke();
+        ink.lineCap = 'butt'; ink.lineJoin = 'miter';
+      }
+      continue;
+    }
+    if (op.t === 'settled') {
+      // Rubber stamp: everyone has paid. Red on light papers, the accent colour on dark ones.
+      ink.save();
+      ink.translate(op.x, op.y); ink.rotate(-0.08);
+      ink.globalAlpha = 0.85;
+      const c = T.dark ? T.accent : '#c33a24';
+      ink.strokeStyle = c; ink.fillStyle = c;
+      ink.lineWidth = 2.2; ink.strokeRect(-52, -21, 104, 42);
+      ink.lineWidth = 0.8; ink.strokeRect(-48, -17, 96, 34);
+      ink.textAlign = 'center';
+      ink.font = 'bold 17px ' + SERIF;
+      if ('letterSpacing' in ink) ink.letterSpacing = '4px';
+      ink.fillText('已结清', 2, -3);
+      ink.font = 'bold 7px ' + MONO;
+      if ('letterSpacing' in ink) ink.letterSpacing = '3px';
+      ink.fillText('ALL SETTLED', 2, 10);
+      ink.restore();
+      continue;
+    }
     if (op.t === 'barcode') {
       // Decorative bars derived from the receipt ID; not a scannable code.
       const bars = rng(seed ^ 0x51ed);
@@ -1136,7 +1244,7 @@ function drawReceipt(r, scale) {
     ink.globalAlpha = op.alpha;
     ink.fillStyle = colors[op.color];
     ink.textAlign = op.align;
-    const tx = op.align === 'center' ? W / 2 + op.spacing / 2 : op.align === 'right' ? W - PAD_X : PAD_X;
+    const tx = op.x !== undefined ? op.x : op.align === 'center' ? W / 2 + op.spacing / 2 : op.align === 'right' ? W - PAD_X : PAD_X;
     ink.fillText(op.str, tx, op.y);
   }
   ink.globalAlpha = 1;
@@ -1186,6 +1294,9 @@ function spokenText(r) {
   }
   parts.push('合计 ' + formatMoney(r.totalMinor));
   if (r.people >= 2) parts.push(r.people + ' 人，人均 ' + formatMoney(Math.round(r.totalMinor / r.people)));
+  const ps = r.people >= 2 ? participantsOf(r) : [];
+  if (ps.length) parts.push('名单：' + ps.map((p) => p.name + (p.paid ? '（已转）' : '（未转）')).join('、'));
+  if (isSettled(r)) parts.push('已结清');
   if (r.pay && PAY_METHODS[r.pay.method]) parts.push(PAY_METHODS[r.pay.method].name + ' 收款 ' + payDisplay(r.pay) + (payLink(r) ? '，附付款二维码' : ''));
   if (r.note) parts.push('备注：' + r.note);
   parts.push('编号 ' + (r.no || receiptNo(r.id, r.createdAt)));
@@ -1442,9 +1553,42 @@ function renderItems(d) {
         el('span', { class: 'per', id: 'per-person' }),
       ]),
       el('p', { class: 'error', id: 'e-people', role: 'alert', hidden: '' }),
+      renderNames(d),
       renderPay(d),
     ]),
   ]);
+}
+
+// Who owes you, as removable chips. Shown only while the receipt is split (see refresh).
+function renderNames(d) {
+  const names = d.names || [];
+  const suggestions = recentNames().filter((n) => !names.includes(n)).slice(0, 8);
+  return el('div', { class: 'names', id: 'f-names', hidden: '' }, [
+    el('div', { class: 'head' }, [optionalLabel('谁要转给你', 'i-names'), el('span', { class: 'counter', text: '不用填自己' })]),
+    el('div', { class: 'chips' }, [
+      ...names.map((n, i) => el('span', { class: 'chip' }, [n,
+        el('button', { type: 'button', 'aria-label': '移除 ' + n, text: '×',
+          onclick: () => { patchDraft((x) => { x.names = x.names.filter((_, j) => j !== i); }); renderForm('i-names'); } })])),
+      el('input', { id: 'i-names', type: 'text', autocomplete: 'off', enterkeyhint: 'done', 'aria-describedby': 'e-names',
+        placeholder: names.length ? '再加一个' : '输入名字后回车，可用逗号分隔多个' }),
+    ]),
+    suggestions.length ? el('div', { class: 'suggest' }, suggestions.map((n) =>
+      el('button', { type: 'button', text: '+ ' + n, onclick: () => addNames(n) }))) : null,
+    el('p', { class: 'error', id: 'e-names', role: 'alert', hidden: '' }),
+  ]);
+}
+
+// Adds names to the draft, skipping repeats. If the list outgrows the head count, the count follows.
+function addNames(raw, rerender) {
+  const add = splitNames(raw);
+  if (!add.length) return;
+  if (add.some((n) => len(n) > NAME_MAX)) { toast('名字最多 ' + NAME_MAX + ' 个字。'); return; }
+  patchDraft((x) => {
+    x.names = Array.from(new Set((x.names || []).concat(add)));
+    const n = /^\d{1,2}$/.test(String(x.people || '').trim()) ? Number(x.people) : 0;
+    if (n < x.names.length + 1 && x.names.length + 1 <= 99) x.people = String(x.names.length + 1);
+  });
+  if (rerender !== false) renderForm('i-names');
 }
 
 // Shown only while the receipt is split (see refresh); the account is remembered for next time.
@@ -1541,6 +1685,7 @@ function onFormKey(e) {
   const m = /^i-item-(\d+)-(name|amount|category)$/.exec(id);
   if (id === 'i-title') $('i-item-0-name').focus();
   else if (id === 'i-people' || id === 'i-pay') e.target.blur();
+  else if (id === 'i-names') addNames(e.target.value);
   else if (m && m[2] === 'category') e.target.blur();
   else if (m && m[2] === 'name') $('i-item-' + m[1] + '-amount').focus();
   else if (m) {
@@ -1587,6 +1732,7 @@ function refresh() {
     const n = /^\d{1,2}$/.test(String(state.draft.people || '').trim()) ? Number(state.draft.people) : 0;
     per.textContent = n >= 2 ? '每人 ' + formatMoney(Math.round(total / n)) : '';
     if ($('f-pay')) $('f-pay').hidden = n < 2;
+    if ($('f-names')) $('f-names').hidden = n < 2;
   }
   const counter = $('note-count');
   if (counter) {
@@ -1598,8 +1744,11 @@ function refresh() {
 
 function onPrint(e) {
   e.preventDefault();
+  if ($('print').disabled) return;
+  // A name typed but not yet turned into a chip still counts (re-render so the chip and head count show).
+  const pendingName = $('i-names') && !$('f-names').hidden ? $('i-names').value.trim() : '';
+  if (pendingName) { addNames(pendingName, false); renderForm(); }
   const button = $('print');
-  if (button.disabled) return;
   attempted = true;
   $('save-error').hidden = true;
 
@@ -1725,6 +1874,7 @@ function renderDetail(id, keepScroll) {
       el('button', { class: 'btn secondary small', text: '保存图片', onclick: () => saveImage(r) }),
       el('button', { class: 'btn small', text: '复制群聊文案', onclick: () => copyChatText(r) }),
     ]) : null,
+    r.people >= 2 ? renderProgress(r) : null,
     el('div', { class: 'styles-head', text: '更换样式' }),
     stylePicker(THEMES[r.style] ? r.style : 'thermal', (key) => {
       try { restyleReceipt(r.id, key); renderDetail(r.id, true); }
@@ -1733,6 +1883,63 @@ function renderDetail(id, keepScroll) {
   ]));
   window.scrollTo(0, keepScroll ? y : 0);
 }
+// Payment tracking: tick people off as their transfers arrive. Names can also be added here,
+// for a receipt printed before everyone's name was known.
+function renderProgress(r) {
+  const ps = participantsOf(r);
+  const owed = owedCount(r);
+  const paid = ps.filter((p) => p.paid).length;
+  const save = (participants, msg) => {
+    const wasSettled = isSettled(r);
+    try { updateReceipt(r.id, { participants: participants.length ? participants : null }); }
+    catch (err) { toast('未保存，请重试。'); return; }
+    const now = state.receipts.find((x) => x.id === r.id);
+    renderDetail(r.id, true);
+    if (!wasSettled && isSettled(now)) toast('全部收齐，小票已盖章');
+    else if (msg) announce(msg);
+  };
+  const addFrom = (input) => {
+    const add = splitNames(input.value).filter((n) => !ps.some((p) => p.name === n));
+    if (!add.length) { input.value = ''; return; }
+    if (add.some((n) => len(n) > NAME_MAX)) { toast('名字最多 ' + NAME_MAX + ' 个字。'); return; }
+    if (ps.length + add.length > owed) { toast('最多 ' + owed + ' 人（' + r.people + ' 人里不含你自己）。'); return; }
+    save(ps.concat(add.map((name) => ({ name, paid: false }))));
+    const again = $('add-name'); if (again) again.focus();
+  };
+
+  const rows = ps.map((p, i) => el('li', { class: 'pg-row' + (p.paid ? ' paid' : '') }, [
+    el('button', { type: 'button', class: 'pg-check', role: 'checkbox', 'aria-checked': String(!!p.paid), 'aria-label': p.name + ' 已转账',
+      onclick: () => save(ps.map((x, j) => j === i ? Object.assign({}, x, { paid: !x.paid, paidAt: !x.paid ? Date.now() : null }) : x),
+        p.name + (p.paid ? ' 改为未转' : ' 已转')) }, [
+      el('span', { class: 'box-mark', 'aria-hidden': 'true' }),
+      el('span', { class: 'pg-name', text: p.name }),
+      el('span', { class: 'pg-amt', text: p.paid ? '已转' : formatMoney(shareMinor(r)) }),
+    ]),
+    el('button', { type: 'button', class: 'pg-remove', 'aria-label': '从名单移除 ' + p.name, text: '×',
+      onclick: () => save(ps.filter((_, j) => j !== i), '已移除 ' + p.name) }),
+  ]));
+
+  const left = owed - ps.length;
+  const input = el('input', { id: 'add-name', type: 'text', autocomplete: 'off', enterkeyhint: 'done', 'aria-label': '添加名字',
+    placeholder: ps.length ? '还有 ' + left + ' 人没填名字' : '填上名字，转了就打勾',
+    onkeydown: (e) => { if (e.key === 'Enter' && !e.isComposing) { e.preventDefault(); addFrom(e.target); } } });
+  const suggestions = left > 0 ? recentNames().filter((n) => !ps.some((p) => p.name === n)).slice(0, 8) : [];
+
+  return el('section', { class: 'progress', 'aria-label': '收款进度' }, [
+    el('div', { class: 'pg-head' }, [
+      el('b', { text: '收款进度' }),
+      el('span', { text: ps.length ? paid + '/' + owed + ' 人 · 已收 ' + formatMoney(paid * shareMinor(r)) : owed + ' 人待转' }),
+    ]),
+    rows.length ? el('ul', { class: 'pg-list' }, rows) : null,
+    left > 0 ? el('div', { class: 'pg-add' }, [
+      el('div', { class: 'box' }, input),
+      el('button', { type: 'button', class: 'btn secondary small', text: '添加', onclick: () => addFrom(input) }),
+    ]) : null,
+    suggestions.length ? el('div', { class: 'suggest' }, suggestions.map((n) =>
+      el('button', { type: 'button', text: '+ ' + n, onclick: () => { input.value = n; addFrom(input); } }))) : null,
+  ]);
+}
+
 document.addEventListener('click', () => document.querySelectorAll('.menu').forEach((m) => { m.hidden = true; }));
 
 async function saveImage(r) {
@@ -1760,6 +1967,12 @@ async function saveImage(r) {
 function chatText(r) {
   const lines = [r.title + ' · ' + displayRange(r.purchaseDate, r.endDate)];
   lines.push('合计 ' + formatMoney(r.totalMinor) + (r.people >= 2 ? '，' + r.people + ' 人，每人 ' + formatMoney(shareMinor(r)) : ''));
+  // Before anyone pays it lists the group; after that it says who is still due.
+  const ps = r.people >= 2 ? participantsOf(r) : [];
+  const unpaid = ps.filter((p) => !p.paid).map((p) => p.name);
+  if (isSettled(r)) { lines.push('已全部收齐，谢谢大家！'); return lines.join('\n'); }
+  if (ps.length && unpaid.length === ps.length) lines.push('名单：' + unpaid.join('、'));
+  else if (ps.length) lines.push('还差：' + (unpaid.length ? unpaid.join('、') : '') + (ps.length < owedCount(r) ? (unpaid.length ? '，' : '') + '还有 ' + (owedCount(r) - ps.length) + ' 人' : ''));
   if (r.pay && PAY_METHODS[r.pay.method]) {
     const link = payLink(r);
     lines.push(link ? PAY_METHODS[r.pay.method].name + ' 点这里付：' + link
