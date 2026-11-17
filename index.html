@@ -1,11 +1,11 @@
 <!doctype html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#f1efea">
-<meta name="description" content="Put everything you spent on a trip, a day or a moment onto one keepsake receipt.">
-<title>Receipts</title>
+<meta name="description" content="把一趟旅行、一天或一个瞬间的花费，印成一张值得留下的小票。">
+<title>小票</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="icon.svg">
@@ -19,7 +19,7 @@
     --line: #dedad2;
     --error: #c8321e;
     --tabs-h: 64px;
-    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", sans-serif;
+    --sans: -apple-system, BlinkMacSystemFont, "PingFang SC", "Segoe UI", Roboto, "Microsoft YaHei", sans-serif;
     --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
   }
   * { box-sizing: border-box; }
@@ -32,7 +32,7 @@
   header.top .left { left: 10px; } header.top .right { right: 10px; }
   main { padding: 8px 20px 24px; }
 
-  button, input, textarea { font: inherit; color: inherit; }
+  button, input, textarea, select { font: inherit; color: inherit; }
   button { cursor: pointer; }
   .btn { border: 0; border-radius: 999px; padding: 15px 20px; font-weight: 650; font-size: 17px; background: var(--ink); color: #fff; width: 100%; }
   .btn.secondary { background: #e4e1da; color: var(--ink); }
@@ -51,7 +51,7 @@
   .counter.over { color: var(--error); }
   .box { display: flex; align-items: center; gap: 6px; background: var(--card); border: 1px solid transparent; border-radius: 12px; padding: 0 14px; min-width: 0; }
   .box:focus-within { border-color: #b9b4aa; }
-  .invalid > .box, .invalid .box.bad { border-color: var(--error); }
+  .invalid > .box, .invalid .row .box { border-color: var(--error); }
   .box input, .box textarea { border: 0; outline: 0; background: transparent; width: 100%; padding: 13px 0; font-size: 17px; min-width: 0; }
   .box input[type="date"] { min-height: 48px; }
   .box textarea { resize: vertical; min-height: 96px; line-height: 1.4; }
@@ -61,14 +61,19 @@
   .two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 
   .items { margin-bottom: 18px; }
-  .item { margin-bottom: 8px; }
+  .item { margin-bottom: 12px; }
   .item .row { display: grid; grid-template-columns: minmax(0, 1fr) 118px 34px; gap: 8px; align-items: center; }
   .item.solo .row { grid-template-columns: minmax(0, 1fr) 118px; }
   .item .box { padding: 0 12px; }
   .item .box input { font-size: 16px; padding: 12px 0; }
   .item .remove { border: 0; background: none; color: var(--muted); font-size: 22px; line-height: 1; height: 34px; width: 34px; border-radius: 999px; padding: 0; }
   .item .remove:hover { background: #e4e1da; color: var(--ink); }
-  .items-foot { display: flex; justify-content: space-between; align-items: center; padding-top: 4px; }
+  .cat { margin-top: 6px; display: flex; align-items: center; gap: 8px; }
+  .cat select, .cat input { font-size: 16px; border: 0; border-radius: 999px; background: #e7e4dc; padding: 5px 12px; max-width: 200px; height: 32px; }
+  .cat select { appearance: none; -webkit-appearance: none; padding-right: 26px; background-image: linear-gradient(45deg, transparent 50%, #77737c 50%), linear-gradient(135deg, #77737c 50%, transparent 50%); background-position: calc(100% - 15px) 14px, calc(100% - 10px) 14px; background-size: 5px 5px; background-repeat: no-repeat; }
+  .cat select.none { color: var(--muted); }
+  .cat input { background: var(--card); width: 150px; }
+  .items-foot { display: flex; justify-content: space-between; align-items: center; padding-top: 2px; }
   .link { border: 0; background: none; padding: 6px 0; font-weight: 600; font-size: 15px; }
   .running { font-family: var(--mono); font-size: 15px; font-weight: 600; }
   .running span { color: var(--muted); font-family: var(--sans); font-size: 13px; margin-right: 8px; }
@@ -78,6 +83,14 @@
   .photo-pick input { position: absolute; opacity: 0; width: 1px; height: 1px; }
   .photo-preview { background: #fbf8f0; border-radius: 12px; padding: 14px; display: flex; flex-direction: column; align-items: center; gap: 10px; }
   .photo-preview canvas { max-width: 100%; height: auto; }
+
+  /* Style picker */
+  .styles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .styles button { border: 2px solid transparent; background: #e9e6df; border-radius: 14px; padding: 8px 4px 6px; display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 600; color: var(--muted); }
+  .styles button[aria-checked="true"] { border-color: var(--ink); color: var(--ink); background: var(--card); }
+  .swatch { width: 60px; height: 72px; overflow: hidden; border-radius: 3px; }
+  .swatch canvas { width: 60px !important; height: auto !important; display: block; }
+  .styles.inline { max-width: 340px; margin: 6px auto 0; }
 
   .more-link { display: block; margin-bottom: 18px; }
   .print-bar { position: sticky; bottom: calc(var(--tabs-h) + env(safe-area-inset-bottom)); background: linear-gradient(to top, var(--bg) 75%, transparent); padding: 14px 0 12px; margin-top: 6px; }
@@ -97,7 +110,7 @@
   .after p { color: var(--muted); font-weight: 600; font-size: 15px; margin: 4px 0 14px; }
   .after .row { display: flex; gap: 12px; }
 
-  canvas.receipt { display: block; filter: drop-shadow(0 3px 5px rgba(0,0,0,.16)); }
+  canvas.receipt { display: block; filter: drop-shadow(0 3px 5px rgba(0,0,0,.18)); }
 
   /* List */
   .list { list-style: none; margin: 0; padding: 0; }
@@ -114,8 +127,9 @@
   .empty p { color: var(--muted); margin: 0 0 20px; }
 
   /* Detail */
-  .detail { display: flex; justify-content: center; padding: 12px 0 8px; }
-  .menu { position: absolute; right: 0; top: 44px; background: var(--card); border-radius: 14px; box-shadow: 0 8px 30px rgba(0,0,0,.18); padding: 6px; min-width: 190px; z-index: 5; }
+  .detail { display: flex; flex-direction: column; align-items: center; padding: 12px 0 8px; }
+  .detail .styles-head { color: var(--muted); font-size: 13px; font-weight: 650; margin: 26px 0 4px; }
+  .menu { position: absolute; right: 0; top: 44px; background: var(--card); border-radius: 14px; box-shadow: 0 8px 30px rgba(0,0,0,.18); padding: 6px; min-width: 170px; z-index: 5; }
   .menu button { display: block; width: 100%; text-align: left; border: 0; background: none; padding: 12px 14px; border-radius: 9px; font-size: 16px; }
   .menu button:hover { background: #f1efea; }
   .menu .danger { color: var(--error); }
@@ -140,29 +154,29 @@
 <div class="app">
   <header class="top">
     <div class="left" id="top-left"></div>
-    <h1 id="title">New Receipt</h1>
+    <h1 id="title">新建小票</h1>
     <div class="right" id="top-right"></div>
   </header>
   <main id="view"></main>
 </div>
 
-<nav class="tabs" aria-label="Sections">
+<nav class="tabs" aria-label="导航">
   <a href="#/new" id="tab-new">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 8V4h10v4"/><rect x="3" y="8" width="18" height="8" rx="2"/><path d="M7 13h10v7H7z"/></svg>
-    New
+    新建
   </a>
   <a href="#/receipts" id="tab-receipts">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h12v18l-2-1.5L14 21l-2-1.5L10 21l-2-1.5L6 21z"/><path d="M9 8h6M9 12h6"/></svg>
-    Receipts
+    小票夹
   </a>
 </nav>
 
 <dialog id="confirm">
-  <h2>Delete this receipt?</h2>
-  <p>This can't be undone. Images you already saved stay where they are.</p>
+  <h2>删除这张小票？</h2>
+  <p>删除后无法恢复。已经保存的图片不受影响。</p>
   <div class="row">
-    <button class="btn secondary small" id="confirm-cancel" style="flex:1">Cancel</button>
-    <button class="btn danger small" id="confirm-ok" style="flex:1">Delete</button>
+    <button class="btn secondary small" id="confirm-cancel" style="flex:1">取消</button>
+    <button class="btn danger small" id="confirm-ok" style="flex:1">删除</button>
   </div>
 </dialog>
 <div class="sr" aria-live="polite" id="live"></div>
@@ -172,9 +186,10 @@
 
 /* ---------- Model ---------- */
 
-const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-const LIMITS = { title: 60, itemName: 40, items: 40, location: 100, note: 200 };
+const LIMITS = { title: 60, itemName: 40, category: 12, items: 40, location: 100, note: 200 };
 const MAX_MINOR = 9999999;
+const CATEGORIES = ['餐饮', '超市采购', '加油/充电', '住宿', '门票', '交通', '购物', '娱乐', '其他'];
+const UNCATEGORISED = '其他';
 
 // Calendar dates are plain YYYY-MM-DD strings, so they never shift with the time zone.
 function todayISO() {
@@ -185,18 +200,12 @@ function isValidISO(s) {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s || '');
   return !!m && +m[2] >= 1 && +m[2] <= 12 && +m[3] >= 1 && +m[3] <= 31;
 }
-function displayDate(iso) {
-  const [y, m, d] = iso.split('-').map(Number);
-  return MONTHS[m - 1] + ' ' + d + ', ' + y;
-}
-// "Nov 14 – 16, 2026", "Nov 30 – Dec 1, 2026", or both dates in full across years.
+// "2026.11.14", "2026.11.14 – 11.15", or both dates in full across years.
+function displayDate(iso) { return iso.replace(/-/g, '.'); }
 function displayRange(start, end) {
   if (!end || end === start) return displayDate(start);
-  const [y1, m1, d1] = start.split('-').map(Number);
-  const [y2, m2, d2] = end.split('-').map(Number);
-  if (y1 !== y2) return displayDate(start) + ' – ' + displayDate(end);
-  if (m1 !== m2) return MONTHS[m1 - 1] + ' ' + d1 + ' – ' + MONTHS[m2 - 1] + ' ' + d2 + ', ' + y1;
-  return MONTHS[m1 - 1] + ' ' + d1 + ' – ' + d2 + ', ' + y1;
+  if (start.slice(0, 4) !== end.slice(0, 4)) return displayDate(start) + ' – ' + displayDate(end);
+  return displayDate(start) + ' – ' + displayDate(end.slice(5));
 }
 
 function formatMoney(minor) {
@@ -205,11 +214,11 @@ function formatMoney(minor) {
 }
 
 const AMOUNT_ERRORS = {
-  empty: 'Enter an amount.',
-  invalid: 'Enter a valid amount, like 12.50.',
-  negative: "Amount can't be negative.",
-  decimals: 'Use at most two decimal places.',
-  range: 'Each amount must be $99,999.99 or less.',
+  empty: '请填写金额。',
+  invalid: '请输入有效金额，例如 12.50。',
+  negative: '金额不能为负数。',
+  decimals: '最多保留两位小数。',
+  range: '单项金额不能超过 $99,999.99。',
 };
 
 // Returns { minor } or { error }.
@@ -219,7 +228,7 @@ function parseAmount(raw) {
   let negative = false;
   const stripMinus = () => { if (/^[-−]/.test(s)) { negative = true; s = s.slice(1); } };
   stripMinus();
-  if (s.startsWith('$')) s = s.slice(1);
+  if (/^[$＄]/.test(s)) s = s.slice(1);
   stripMinus();
   s = s.trim();
   // Some keyboards type "," as the decimal separator.
@@ -242,42 +251,61 @@ function parseAmount(raw) {
 const len = (s) => Array.from(s).length;
 
 // Error keys match form element ids: title, date, endDate, item-<row>, location, note.
+// `focus` says which input of an item row the error belongs to.
 function validate(draft) {
-  const errors = {};
+  const errors = {}, focus = {};
   const title = draft.title.trim();
-  if (!title) errors.title = 'Give this receipt a title.';
-  else if (len(title) > LIMITS.title) errors.title = 'Title must be 60 characters or fewer.';
+  if (!title) errors.title = '请填写标题。';
+  else if (len(title) > LIMITS.title) errors.title = '标题最多 60 个字符。';
 
   const start = draft.date || todayISO();
-  if (!isValidISO(start)) errors.date = 'Choose a date.';
+  if (!isValidISO(start)) errors.date = '请选择日期。';
   const end = draft.endDate && draft.endDate !== start ? draft.endDate : null;
-  if (end && !isValidISO(end)) errors.endDate = 'Choose a valid end date.';
-  else if (end && end < start) errors.endDate = "End date can't be before the start date.";
+  if (end && !isValidISO(end)) errors.endDate = '请选择有效的结束日期。';
+  else if (end && end < start) errors.endDate = '结束日期不能早于开始日期。';
 
   // Rows left completely blank are ignored. A single item may go unnamed (a one-amount receipt).
-  const rows = draft.items.map((it, i) => ({ i, name: it.name.trim(), amount: it.amount.trim() }));
+  const rows = draft.items.map((it, i) => ({ i, name: it.name.trim(), amount: it.amount.trim(), category: (it.category || '').trim() }));
   const filled = rows.filter((r) => r.name || r.amount);
   const items = [];
-  if (!filled.length) errors['item-0'] = 'Enter an amount.';
+  const fail = (r, msg, where) => { errors['item-' + r.i] = msg; focus['item-' + r.i] = where; };
+  if (!filled.length) fail(rows[0], AMOUNT_ERRORS.empty, 'amount');
   for (const r of filled) {
     const amount = parseAmount(r.amount);
-    if (amount.error) errors['item-' + r.i] = AMOUNT_ERRORS[amount.error];
-    else if (!r.name && filled.length > 1) errors['item-' + r.i] = 'Name this item.';
-    else if (len(r.name) > LIMITS.itemName) errors['item-' + r.i] = 'Item name must be 40 characters or fewer.';
-    else items.push({ name: r.name, amountMinor: amount.minor });
+    if (amount.error) fail(r, AMOUNT_ERRORS[amount.error], 'amount');
+    else if (!r.name && (filled.length > 1 || r.category)) fail(r, '请填写项目名称。', 'name');
+    else if (len(r.name) > LIMITS.itemName) fail(r, '项目名称最多 40 个字符。', 'name');
+    else if (len(r.category) > LIMITS.category) fail(r, '分类最多 12 个字符。', 'name');
+    else items.push({ name: r.name, amountMinor: amount.minor, category: r.category });
   }
 
   const location = draft.location.trim();
-  if (len(location) > LIMITS.location) errors.location = 'Location must be 100 characters or fewer.';
+  if (len(location) > LIMITS.location) errors.location = '地点最多 100 个字符。';
   const note = draft.note.trim();
-  if (len(note) > LIMITS.note) errors.note = 'Note must be 200 characters or fewer.';
+  if (len(note) > LIMITS.note) errors.note = '备注最多 200 个字符。';
 
-  if (Object.keys(errors).length) return { errors };
-  return { errors, input: {
+  if (Object.keys(errors).length) return { errors, focus };
+  return { errors, focus, input: {
     title, purchaseDate: start, endDate: end, items,
     totalMinor: items.reduce((sum, it) => sum + it.amountMinor, 0),
     location: location || null, note: note || null, photo: draft.photo || null,
+    style: THEMES[draft.style] ? draft.style : 'thermal',
   } };
+}
+
+// Items grouped by category in order of first appearance. With no categories at all there is
+// one unnamed group; otherwise uncategorised items fall under "其他".
+function groupItems(items) {
+  if (!items.some((it) => it.category)) return [{ name: '', items, subtotal: 0 }];
+  const groups = [];
+  for (const it of items) {
+    const name = it.category || UNCATEGORISED;
+    let g = groups.find((x) => x.name === name);
+    if (!g) { g = { name, items: [], subtotal: 0 }; groups.push(g); }
+    g.items.push(it);
+    g.subtotal += it.amountMinor;
+  }
+  return groups;
 }
 
 /* ---------- Storage ---------- */
@@ -287,26 +315,30 @@ function validate(draft) {
 const KEY = 'receipts.v1';
 const FAIL_SAVE = new URLSearchParams(location.search).has('failsave'); // QA hook
 
-function newDraft() {
+function newDraft(style) {
   const id = (crypto.randomUUID && crypto.randomUUID()) ||
     Array.from(crypto.getRandomValues(new Uint8Array(16)), (b) => b.toString(16).padStart(2, '0')).join('');
-  return { id, title: '', date: null, endDate: null, items: [{ name: '', amount: '' }], location: '', note: '', photo: null };
+  return { id, title: '', date: null, endDate: null, items: [{ name: '', amount: '', category: '' }],
+    location: '', note: '', photo: null, style: style || 'thermal' };
 }
 
-// Receipts and drafts saved by the first version had one merchant and one amount.
+// Receipts and drafts saved by earlier versions had one merchant and one amount, and no style.
 function upgradeReceipt(r) {
-  if (Array.isArray(r.items)) return r;
-  return Object.assign({}, r, {
+  const out = Object.assign({ style: 'thermal' }, r);
+  if (!Array.isArray(r.items)) Object.assign(out, {
     title: r.merchant, items: [{ name: '', amountMinor: r.amountMinor }], totalMinor: r.amountMinor,
     endDate: null, photo: null,
   });
+  return out;
 }
 function upgradeDraft(d) {
   if (!d) return newDraft();
-  if (Array.isArray(d.items) && d.items.length) return d;
+  if (Array.isArray(d.items) && d.items.length) {
+    return Object.assign({ style: 'thermal' }, d, { items: d.items.map((it) => Object.assign({ category: '' }, it)) });
+  }
   return Object.assign(newDraft(), {
     id: d.id, title: d.merchant || '', date: d.date || null,
-    items: [{ name: '', amount: d.amount || '' }], location: d.location || '', note: d.note || '',
+    items: [{ name: '', amount: d.amount || '', category: '' }], location: d.location || '', note: d.note || '',
   });
 }
 
@@ -341,13 +373,19 @@ function commit(input) {
   if (FAIL_SAVE) throw new Error('simulated save failure');
   const id = state.draft.id;
   const existing = state.receipts.find((r) => r.id === id);
-  const receipt = existing || Object.assign({ id, currency: 'USD', createdAt: Date.now(), templateVersion: 2 }, input);
-  write({ receipts: sorted(existing ? state.receipts : state.receipts.concat(receipt)), draft: newDraft() });
+  const receipt = existing || Object.assign({ id, currency: 'USD', createdAt: Date.now(), templateVersion: 3 }, input);
+  // The next draft starts in the style just used.
+  write({ receipts: sorted(existing ? state.receipts : state.receipts.concat(receipt)), draft: newDraft(receipt.style) });
   return receipt;
 }
 
 function removeReceipt(id) {
   write({ receipts: state.receipts.filter((r) => r.id !== id), draft: state.draft });
+  thumbs.delete(id);
+}
+
+function restyleReceipt(id, style) {
+  write({ receipts: state.receipts.map((r) => r.id === id ? Object.assign({}, r, { style }) : r), draft: state.draft });
   thumbs.delete(id);
 }
 
@@ -417,26 +455,54 @@ async function photoFromFile(file) {
   return { w, h, bits: btoa(binary) };
 }
 
-// Draws the dark dots of a photo; `px` is the size of one dot.
-function drawPhoto(ctx, photo, x0, y0, px) {
+// Draws a photo's dots; `px` is the size of one dot. On dark paper the light dots are inked instead.
+function drawPhoto(ctx, photo, x0, y0, px, invert) {
   const binary = atob(photo.bits);
   for (let y = 0; y < photo.h; y++) {
     let runStart = -1;
     for (let x = 0; x <= photo.w; x++) {
       const i = y * photo.w + x;
-      const dark = x < photo.w && (binary.charCodeAt(i >> 3) >> (i & 7)) & 1;
-      if (dark && runStart < 0) runStart = x;
-      if (!dark && runStart >= 0) { ctx.fillRect(x0 + runStart * px, y0 + y * px, (x - runStart) * px, px); runStart = -1; }
+      const dark = ((binary.charCodeAt(i >> 3) >> (i & 7)) & 1) === 1;
+      const on = x < photo.w && (invert ? !dark : dark);
+      if (on && runStart < 0) runStart = x;
+      if (!on && runStart >= 0) { ctx.fillRect(x0 + runStart * px, y0 + y * px, (x - runStart) * px, px); runStart = -1; }
     }
   }
 }
 
-/* ---------- Receipt template (canvas) ---------- */
+/* ---------- Receipt styles (canvas) ---------- */
 // One drawing routine for the print stage, detail, thumbnails and image export.
+// A style only changes paper, ink, type, edges and ornaments; the content layout is shared.
 
-const W = 300, PAD_X = 24, PAD_TOP = 30, PAD_BOTTOM = 34;
+const W = 300, PAD_X = 24, PAD_BOTTOM = 34;
 const MONO = 'ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, "Liberation Mono", "PingFang SC", "Microsoft YaHei", monospace';
+const SERIF = 'Georgia, "Songti SC", "STSong", "Noto Serif CJK SC", "Source Han Serif SC", SimSun, serif';
+const SANS = '-apple-system, "Helvetica Neue", "PingFang SC", "Microsoft YaHei", Arial, sans-serif';
 const INK = '#211f24';
+
+const THEMES = {
+  thermal: {
+    name: '热敏纸', paper: ['#fbf8f0', '#f8f4ea'], ink: '#211f24', accent: '#211f24',
+    font: MONO, rule: 'dash', top: 'flat', bottom: 'torn', padTop: 30,
+    wear: 0.16, wearLines: 2, fibres: 1,
+  },
+  kraft: {
+    name: '牛皮纸', paper: ['#d6b98d', '#caa978'], ink: '#38261a', accent: '#9c2f1c',
+    font: SERIF, rule: 'double', top: 'zig', bottom: 'zig', padTop: 34,
+    wear: 0.1, wearLines: 0, fibres: 2.2, stamp: true,
+  },
+  ticket: {
+    name: '票根', paper: ['#fff7ef', '#fdeee3'], ink: '#22304f', accent: '#e2553f', band: '#e2553f',
+    font: SANS, rule: 'dot', top: 'scallop', bottom: 'scallop', padTop: 28,
+    wear: 0.04, wearLines: 0, fibres: 0, barcode: true,
+  },
+  midnight: {
+    name: '午夜', paper: ['#1f2437', '#141827'], ink: '#ece6d6', accent: '#f0c050',
+    font: MONO, rule: 'dash', ruleColor: 'accent', top: 'flat', bottom: 'torn', padTop: 30,
+    wear: 0.07, wearLines: 0, fibres: 0, stars: true, invertPhoto: true,
+  },
+};
+const THEME_ORDER = ['thermal', 'kraft', 'ticket', 'midnight'];
 
 function hash32(str) {
   let h = 0x811c9dc5;
@@ -484,50 +550,107 @@ function wrap(ctx, text, maxWidth) {
   return lines;
 }
 
+// Paper outline. Top and bottom edges depend on the style; ticket stubs get a notch on each side.
+function paperPath(ctx, T, H, rand, notchY) {
+  const PI = Math.PI;
+  const n = Math.floor(W / 14), step = W / n;
+  ctx.beginPath();
+  if (T.top === 'zig') {
+    ctx.moveTo(0, 4);
+    let up = true;
+    for (let x = 5; x <= W; x += 5) { ctx.lineTo(x, up ? 0 : 4); up = !up; }
+  } else if (T.top === 'scallop') {
+    ctx.moveTo(0, 0);
+    for (let i = 0; i < n; i++) { const cx = (i + 0.5) * step; ctx.lineTo(cx - 5, 0); ctx.arc(cx, 0, 5, PI, 0, true); }
+    ctx.lineTo(W, 0);
+  } else { ctx.moveTo(0, 0); ctx.lineTo(W, 0); }
+
+  if (notchY) { ctx.lineTo(W, notchY - 7); ctx.arc(W, notchY, 7, -PI / 2, PI / 2, true); }
+
+  if (T.bottom === 'zig') {
+    let up = false;
+    for (let x = W; x >= 0; x -= 5) { ctx.lineTo(x, up ? H : H - 4); up = !up; }
+  } else if (T.bottom === 'scallop') {
+    ctx.lineTo(W, H);
+    for (let i = n - 1; i >= 0; i--) { const cx = (i + 0.5) * step; ctx.lineTo(cx + 5, H); ctx.arc(cx, H, 5, 0, PI, true); }
+    ctx.lineTo(0, H);
+  } else {
+    ctx.lineTo(W, H - 2);
+    let x = W, notch = true;
+    while (x > 0) {
+      x = Math.max(0, x - 4.5 * (0.8 + rand() * 0.5));
+      ctx.lineTo(x, notch ? H - 5 - rand() * 2 : H - rand() * 1.5);
+      notch = !notch;
+    }
+  }
+
+  if (notchY) { ctx.lineTo(0, notchY + 7); ctx.arc(0, notchY, 7, PI / 2, -PI / 2, true); }
+  ctx.closePath();
+}
+
 function drawReceipt(r, scale) {
   scale = scale || Math.min(3, Math.max(2, window.devicePixelRatio || 1));
+  const T = THEMES[r.style] || THEMES.thermal;
+  const F = T.font;
   const inner = W - PAD_X * 2;
   const measure = document.createElement('canvas').getContext('2d');
   const ops = [];
-  let y = PAD_TOP;
+  let y = T.padTop;
+  let bandBottom = 0;
 
   const text = (str, font, lineH, align, opts) => {
     opts = opts || {};
     measure.font = font;
     const lines = opts.noWrap ? [str] : wrap(measure, str, opts.width || inner);
     for (const ln of lines) {
-      ops.push({ t: 'text', str: ln, font, align, y: y + lineH / 2, spacing: opts.spacing || 0, alpha: opts.alpha || 1 });
+      ops.push({ t: 'text', str: ln, font, align, y: y + lineH / 2, spacing: opts.spacing || 0,
+        alpha: opts.alpha || 1, color: opts.color || 'ink' });
       y += lineH;
     }
   };
-  const rule = () => { ops.push({ t: 'rule', y: y + 0.5 }); y += 1; };
+  const rule = () => { ops.push({ t: 'rule', y: y + 0.5 }); y += T.rule === 'double' ? 4 : 1; };
 
-  // Header: title, date or date range, optional place.
-  text(r.title, 'bold 22px ' + MONO, 29, 'center');
-  y += 10;
-  text(displayRange(r.purchaseDate, r.endDate).toUpperCase(), '12px ' + MONO, 16, 'center', { spacing: 1, noWrap: true });
-  if (r.location) { y += 5; text(r.location, '12px ' + MONO, 17, 'center'); }
-
-  if (r.photo) {
-    y += 18;
-    const px = inner / r.photo.w;
-    ops.push({ t: 'photo', photo: r.photo, y, px });
-    y += r.photo.h * px;
+  // Header: title, date or date range, optional place, optional photo.
+  const onBand = T.band ? 'paper' : 'ink';
+  text(r.title, 'bold 22px ' + F, 29, 'center', { color: onBand });
+  y += T.band ? 6 : 10;
+  text(displayRange(r.purchaseDate, r.endDate), '12px ' + F, 16, 'center', { spacing: 1, noWrap: true, color: onBand, alpha: T.band ? 0.92 : 1 });
+  if (T.band) {
+    // Ticket: the header sits on a coloured band that takes the place of the first rule.
+    bandBottom = y + 16;
+    y = bandBottom + 16;
+    if (r.location) { text(r.location, '12px ' + F, 17, 'center'); y += 10; }
+    if (r.photo) { ops.push({ t: 'photo', photo: r.photo, y, px: inner / r.photo.w }); y += r.photo.h * inner / r.photo.w + 16; }
+    y -= 14;
+  } else {
+    if (r.location) { y += 5; text(r.location, '12px ' + F, 17, 'center'); }
+    if (r.photo) { y += 18; ops.push({ t: 'photo', photo: r.photo, y, px: inner / r.photo.w }); y += r.photo.h * inner / r.photo.w; }
+    y += 20; rule();
   }
 
-  y += 20; rule();
-
-  // Line items. A lone unnamed item is just the total, so the list is skipped.
+  // Line items, grouped under category headings when categories are used.
+  // A lone unnamed item is just the total, so the list is skipped.
   const itemised = !(r.items.length === 1 && !r.items[0].name);
   if (itemised) {
-    const itemFont = '13px ' + MONO;
+    const itemFont = '13px ' + F;
     measure.font = itemFont;
     const amountW = Math.max(...r.items.map((it) => measure.measureText(formatMoney(it.amountMinor)).width));
     y += 14;
-    r.items.forEach((it, i) => {
-      if (i) y += 7;
-      ops.push({ t: 'text', str: formatMoney(it.amountMinor), font: itemFont, align: 'right', y: y + 9, spacing: 0, alpha: 1 });
-      text(it.name, itemFont, 18, 'left', { width: inner - amountW - 12 });
+    groupItems(r.items).forEach((g, gi) => {
+      if (gi) y += 14;
+      if (g.name) {
+        const headFont = 'bold 12px ' + F;
+        if (g.items.length > 1) {
+          ops.push({ t: 'text', str: formatMoney(g.subtotal), font: '11px ' + F, align: 'right', y: y + 9, spacing: 0, alpha: 0.75, color: 'accent' });
+        }
+        text(g.name, headFont, 18, 'left', { color: 'accent', spacing: 1, noWrap: true });
+        y += 4;
+      }
+      g.items.forEach((it, i) => {
+        if (i) y += 7;
+        ops.push({ t: 'text', str: formatMoney(it.amountMinor), font: itemFont, align: 'right', y: y + 9, spacing: 0, alpha: 1, color: 'ink' });
+        text(it.name, itemFont, 18, 'left', { width: inner - amountW - 12 });
+      });
     });
     y += 14; rule();
   }
@@ -537,17 +660,27 @@ function drawReceipt(r, scale) {
   const total = formatMoney(r.totalMinor);
   let size = 28;
   for (; size > 16; size--) {
-    measure.font = 'bold ' + size + 'px ' + MONO;
+    measure.font = 'bold ' + size + 'px ' + F;
     if (measure.measureText(total).width <= inner - 64) break;
   }
   const totalY = y + 17;
-  ops.push({ t: 'text', str: 'TOTAL', font: '600 13px ' + MONO, align: 'left', y: totalY + 3, spacing: 1.5, alpha: 1 });
-  ops.push({ t: 'text', str: total, font: 'bold ' + size + 'px ' + MONO, align: 'right', y: totalY, spacing: 0, alpha: 1 });
+  ops.push({ t: 'text', str: '合计', font: '600 14px ' + F, align: 'left', y: totalY + 2, spacing: 3, alpha: 1, color: 'ink' });
+  ops.push({ t: 'text', str: total, font: 'bold ' + size + 'px ' + F, align: 'right', y: totalY, spacing: 0, alpha: 1, color: T.band || T.stars ? 'accent' : 'ink' });
+  if (T.stamp) ops.push({ t: 'stamp', x: 112, y: totalY - 2 });
   y += 34 + 18;
 
-  if (r.note) { rule(); y += 16; text(r.note, '13px ' + MONO, 20, 'left'); y += 16; }
+  if (r.note) { rule(); y += 16; text(r.note, '13px ' + F, 20, 'left'); y += 16; }
+
+  if (T.barcode) {
+    y += 6;
+    ops.push({ t: 'barcode', y, h: 26 });
+    y += 26 + 6;
+    text(r.id.replace(/-/g, '').slice(0, 12).toUpperCase(), '8px ' + MONO, 10, 'center', { spacing: 2, alpha: 0.6, noWrap: true });
+    y += 4;
+  }
+
   y += 14;
-  text('PERSONAL RECORD', '500 8.5px ' + MONO, 11, 'center', { spacing: 2.5, alpha: 0.7, noWrap: true });
+  text('PERSONAL RECORD', '500 8.5px ' + (T.font === SERIF ? SERIF : MONO), 11, 'center', { spacing: 2.5, alpha: 0.7, noWrap: true });
   const H = Math.ceil(y + PAD_BOTTOM);
 
   const canvas = document.createElement('canvas');
@@ -560,50 +693,94 @@ function drawReceipt(r, scale) {
   ctx.scale(scale, scale);
   const rand = rng(hash32(r.id));
 
-  // Paper outline: straight cut on top, torn sawtooth at the bottom.
-  ctx.beginPath();
-  ctx.moveTo(0, 0); ctx.lineTo(W, 0); ctx.lineTo(W, H - 2);
-  let x = W, notch = true;
-  while (x > 0) {
-    x = Math.max(0, x - 4.5 * (0.8 + rand() * 0.5));
-    ctx.lineTo(x, notch ? H - 5 - rand() * 2 : H - rand() * 1.5);
-    notch = !notch;
-  }
-  ctx.closePath();
+  paperPath(ctx, T, H, rand, bandBottom);
   ctx.clip();
 
-  // Warm white thermal paper with faint roll bands and fibres.
+  // Paper.
   const grad = ctx.createLinearGradient(0, 0, 0, H);
-  grad.addColorStop(0, '#fbf8f0'); grad.addColorStop(1, '#f8f4ea');
+  grad.addColorStop(0, T.paper[0]); grad.addColorStop(1, T.paper[1]);
   ctx.fillStyle = grad; ctx.fillRect(0, 0, W, H);
-  for (let i = 0; i < 5; i++) {
-    ctx.fillStyle = 'rgba(0,0,0,' + (0.006 + rand() * 0.007) + ')';
-    ctx.fillRect(rand() * W, 0, 18 + rand() * 50, H);
+  if (T.fibres) {
+    for (let i = 0; i < 5; i++) {
+      ctx.fillStyle = 'rgba(0,0,0,' + (0.006 + rand() * 0.007) * T.fibres + ')';
+      ctx.fillRect(rand() * W, 0, 18 + rand() * 50, H);
+    }
+    const fibres = Math.floor(W * H / 45);
+    for (let i = 0; i < fibres; i++) {
+      const dark = rand() < 0.6;
+      ctx.fillStyle = dark ? 'rgba(40,20,0,' + (0.02 + rand() * 0.045) * T.fibres + ')' : 'rgba(255,255,255,' + (0.25 + rand() * 0.35) / T.fibres + ')';
+      ctx.fillRect(rand() * W, rand() * H, (0.5 + rand() * 1.4) * (T.fibres > 1 ? 2 : 1), 0.5);
+    }
   }
-  const fibres = Math.floor(W * H / 45);
-  for (let i = 0; i < fibres; i++) {
-    const dark = rand() < 0.6;
-    ctx.fillStyle = dark ? 'rgba(0,0,0,' + (0.02 + rand() * 0.045) + ')' : 'rgba(255,255,255,' + (0.25 + rand() * 0.35) + ')';
-    ctx.fillRect(rand() * W, rand() * H, 0.5 + rand() * 1.4, 0.5);
+  if (T.stars) {
+    const stars = Math.floor(W * H / 900);
+    for (let i = 0; i < stars; i++) {
+      const big = rand() < 0.12;
+      ctx.fillStyle = 'rgba(255,250,230,' + (0.12 + rand() * (big ? 0.6 : 0.35)) + ')';
+      const s = big ? 1.6 : 0.6 + rand() * 0.6;
+      ctx.fillRect(rand() * W, rand() * H, s, s);
+    }
+  }
+  if (T.band) {
+    ctx.fillStyle = T.band; ctx.fillRect(0, 0, W, bandBottom);
+    // Perforation between the stub header and the body.
+    ctx.strokeStyle = 'rgba(255,255,255,0.75)'; ctx.lineWidth = 1.5; ctx.setLineDash([2, 5]);
+    ctx.beginPath(); ctx.moveTo(10, bandBottom - 1); ctx.lineTo(W - 10, bandBottom - 1); ctx.stroke();
+    ctx.setLineDash([]);
   }
 
   // Ink on its own layer so the print can be made slightly uneven.
+  const colors = { ink: T.ink, accent: T.accent, paper: T.paper[0] };
   const inkCanvas = document.createElement('canvas');
   inkCanvas.width = canvas.width; inkCanvas.height = canvas.height;
   const ink = inkCanvas.getContext('2d');
   ink.scale(scale, scale);
-  ink.fillStyle = INK; ink.strokeStyle = INK; ink.textBaseline = 'middle';
+  ink.textBaseline = 'middle';
   for (const op of ops) {
     ink.globalAlpha = 1;
+    ink.setLineDash([]);
+    if ('letterSpacing' in ink) ink.letterSpacing = '0px';
     if (op.t === 'rule') {
-      ink.setLineDash([4, 3]); ink.lineWidth = 1;
-      ink.beginPath(); ink.moveTo(PAD_X, op.y); ink.lineTo(W - PAD_X, op.y); ink.stroke();
+      ink.strokeStyle = colors[T.ruleColor || 'ink'];
+      ink.globalAlpha = T.ruleColor ? 0.7 : 1;
+      const line = (yy, w) => { ink.lineWidth = w; ink.beginPath(); ink.moveTo(PAD_X, yy); ink.lineTo(W - PAD_X, yy); ink.stroke(); };
+      if (T.rule === 'double') { line(op.y, 1.2); line(op.y + 3, 0.6); }
+      else if (T.rule === 'dot') { ink.lineCap = 'round'; ink.setLineDash([0.1, 5]); line(op.y, 1.6); ink.lineCap = 'butt'; }
+      else { ink.setLineDash([4, 3]); line(op.y, 1); }
       continue;
     }
-    if (op.t === 'photo') { drawPhoto(ink, op.photo, PAD_X, op.y, op.px); continue; }
+    if (op.t === 'photo') { ink.fillStyle = T.ink; drawPhoto(ink, op.photo, PAD_X, op.y, op.px, T.invertPhoto); continue; }
+    if (op.t === 'barcode') {
+      // Decorative bars derived from the receipt ID; not a scannable code.
+      const bars = rng(hash32(r.id) ^ 0x51ed);
+      ink.fillStyle = T.ink;
+      let bx = PAD_X + 26;
+      while (bx < W - PAD_X - 26) {
+        const bw = 1 + Math.floor(bars() * 3);
+        if (bx + bw > W - PAD_X - 26) break;
+        ink.fillRect(bx, op.y, bw, op.h);
+        bx += bw + 1 + Math.floor(bars() * 3);
+      }
+      continue;
+    }
+    if (op.t === 'stamp') {
+      ink.save();
+      ink.translate(op.x, op.y); ink.rotate(-0.24);
+      ink.globalAlpha = 0.62; ink.strokeStyle = T.accent; ink.fillStyle = T.accent;
+      ink.lineWidth = 2; ink.beginPath(); ink.arc(0, 0, 25, 0, Math.PI * 2); ink.stroke();
+      ink.lineWidth = 0.8; ink.beginPath(); ink.arc(0, 0, 21, 0, Math.PI * 2); ink.stroke();
+      ink.textAlign = 'center';
+      ink.font = 'bold 16px ' + SERIF; ink.fillText('已付', 0, -4);
+      ink.font = 'bold 6.5px ' + SERIF;
+      if ('letterSpacing' in ink) ink.letterSpacing = '2px';
+      ink.fillText('PAID', 1, 10);
+      ink.restore();
+      continue;
+    }
     ink.font = op.font;
     if ('letterSpacing' in ink) ink.letterSpacing = op.spacing + 'px';
     ink.globalAlpha = op.alpha;
+    ink.fillStyle = colors[op.color];
     ink.textAlign = op.align;
     const tx = op.align === 'center' ? W / 2 + op.spacing / 2 : op.align === 'right' ? W - PAD_X : PAD_X;
     ink.fillText(op.str, tx, op.y);
@@ -611,10 +788,10 @@ function drawReceipt(r, scale) {
   ink.globalAlpha = 1;
   ink.globalCompositeOperation = 'destination-out';
   for (let ry = 0; ry < H; ry += 2) {
-    ink.fillStyle = 'rgba(0,0,0,' + rand() * 0.16 + ')';
+    ink.fillStyle = 'rgba(0,0,0,' + rand() * T.wear + ')';
     ink.fillRect(0, ry, W, 2);
   }
-  for (let i = 0; i < 2; i++) {
+  for (let i = 0; i < T.wearLines; i++) {
     ink.fillStyle = 'rgba(0,0,0,0.3)';
     ink.fillRect(PAD_X + rand() * inner, 0, 0.8, H);
   }
@@ -626,14 +803,16 @@ function drawReceipt(r, scale) {
 }
 
 function spokenText(r) {
-  const parts = ['Receipt', r.title, displayRange(r.purchaseDate, r.endDate)];
+  const parts = ['小票', r.title, displayRange(r.purchaseDate, r.endDate)];
   if (r.location) parts.push(r.location);
-  if (r.photo) parts.push('Photo');
-  for (const it of r.items) if (it.name) parts.push(it.name + ' ' + formatMoney(it.amountMinor));
-  parts.push('Total ' + formatMoney(r.totalMinor));
-  if (r.note) parts.push('Note: ' + r.note);
-  parts.push('Personal record');
-  return parts.join('. ');
+  if (r.photo) parts.push('照片');
+  for (const g of groupItems(r.items)) {
+    if (g.name) parts.push('分类 ' + g.name);
+    for (const it of g.items) if (it.name) parts.push(it.name + ' ' + formatMoney(it.amountMinor));
+  }
+  parts.push('合计 ' + formatMoney(r.totalMinor));
+  if (r.note) parts.push('备注：' + r.note);
+  return parts.join('。');
 }
 
 // Thumbnails are cached in memory only and rebuilt on demand.
@@ -647,6 +826,20 @@ function thumbnail(r) {
   return thumbs.get(r.id);
 }
 
+// A small fixed sample receipt per style, used by the style pickers.
+const SAMPLE = { title: '周末小记', purchaseDate: '2026-11-14', endDate: null, location: null, note: null, photo: null,
+  items: [{ name: '咖啡', amountMinor: 650, category: '' }, { name: '晚餐', amountMinor: 4200, category: '' }], totalMinor: 4850 };
+function stylePicker(current, onPick, extraClass) {
+  return el('div', { class: 'styles' + (extraClass ? ' ' + extraClass : ''), role: 'radiogroup', 'aria-label': '小票样式' },
+    THEME_ORDER.map((key) => {
+      const sample = drawReceipt(Object.assign({ id: 'sample-' + key, style: key }, SAMPLE), 1);
+      sample.removeAttribute('role'); sample.setAttribute('aria-hidden', 'true');
+      return el('button', { type: 'button', role: 'radio', 'aria-checked': String(key === current),
+        onclick: () => { if (key !== current) onPick(key); } },
+        [el('div', { class: 'swatch' }, sample), el('span', { text: THEMES[key].name })]);
+    }));
+}
+
 // Full-length PNG of the whole receipt on a neutral backdrop.
 function exportBlob(r) {
   const scale = 3, pad = 28;
@@ -656,7 +849,7 @@ function exportBlob(r) {
   out.height = src.height + pad * 2 * scale;
   const ctx = out.getContext('2d');
   ctx.fillStyle = '#ededed'; ctx.fillRect(0, 0, out.width, out.height);
-  ctx.shadowColor = 'rgba(0,0,0,0.18)'; ctx.shadowBlur = 5 * scale; ctx.shadowOffsetY = 3 * scale;
+  ctx.shadowColor = 'rgba(0,0,0,0.2)'; ctx.shadowBlur = 5 * scale; ctx.shadowOffsetY = 3 * scale;
   ctx.drawImage(src, pad * scale, pad * scale);
   return new Promise((resolve, reject) => out.toBlob((b) => b ? resolve(b) : reject(new Error('export failed')), 'image/png'));
 }
@@ -665,9 +858,10 @@ function exportBlob(r) {
 
 const $ = (id) => document.getElementById(id);
 const view = $('view');
-let printed = null;      // receipt currently on the print stage
-let attempted = false;   // show field errors only after the first Print tap
+let printed = null;            // receipt currently on the print stage
+let attempted = false;         // show field errors only after the first Print tap
 let showMore = false;
+const customRows = new Set();  // item rows whose category is being typed by hand
 
 function el(tag, attrs, children) {
   const node = document.createElement(tag);
@@ -689,7 +883,7 @@ function toast(msg) {
 
 function setChrome(title, tab, left, right) {
   $('title').textContent = title;
-  document.title = title ? title + ' · Receipts' : 'Receipts';
+  document.title = title ? title + ' · 小票' : '小票';
   $('top-left').replaceChildren(...(left ? [left] : []));
   $('top-right').replaceChildren(...(right ? [right] : []));
   for (const name of ['new', 'receipts']) {
@@ -705,11 +899,21 @@ function patchDraft(change) {
   change(next);
   saveDraft(next);
 }
+function patchItem(i, change) {
+  patchDraft((n) => { n.items = n.items.map((x, j) => j === i ? Object.assign({}, x, change) : x); });
+}
+
+function optionalLabel(text, forId) {
+  const label = el(forId ? 'label' : 'span', { for: forId, class: forId ? null : 'label', text: text + ' ' });
+  label.append(el('small', { text: '· 可选' }));
+  return label;
+}
 
 function renderForm(focusId) {
-  setChrome('New Receipt', 'new');
+  setChrome('新建小票', 'new');
   const d = state.draft;
   if (d.location || d.note) showMore = true;
+  const keepScroll = window.scrollY;
 
   const field = (name, label, control, extra) => el('div', { class: 'field', id: 'f-' + name }, [
     el('div', { class: 'head' }, [typeof label === 'string' ? el('label', { for: 'i-' + name, text: label }) : label, extra]),
@@ -721,54 +925,86 @@ function renderForm(focusId) {
     oninput: (e) => { patchDraft((n) => { n[name] = e.target.value; }); refresh(); },
   }, attrs));
 
-  const optional = (text) => {
-    const label = el('label', { for: 'i-endDate', text: text + ' ' });
-    label.append(el('small', { text: '· optional' }));
-    return label;
-  };
-
   const form = el('form', { novalidate: '', onsubmit: onPrint, onkeydown: onFormKey }, [
-    field('title', 'Title', el('div', { class: 'box' },
-      input('title', { type: 'text', placeholder: 'Roadtrip to Lost Maples, dinner out…', value: d.title, enterkeyhint: 'next' }))),
+    field('title', '标题', el('div', { class: 'box' },
+      input('title', { type: 'text', placeholder: '例如：周末自驾去 Lost Maples', value: d.title, enterkeyhint: 'next' }))),
     el('div', { class: 'two' }, [
-      field('date', 'Date', el('div', { class: 'box' }, el('input', {
+      field('date', '日期', el('div', { class: 'box' }, el('input', {
         id: 'i-date', type: 'date', value: d.date || todayISO(), 'aria-describedby': 'e-date',
         oninput: (e) => { patchDraft((n) => { n.date = e.target.value || null; }); refresh(); },
       }))),
-      field('endDate', optional('Until'), el('div', { class: 'box' }, el('input', {
+      field('endDate', optionalLabel('结束日期', 'i-endDate'), el('div', { class: 'box' }, el('input', {
         id: 'i-endDate', type: 'date', value: d.endDate || '', 'aria-describedby': 'e-endDate',
         oninput: (e) => { patchDraft((n) => { n.endDate = e.target.value || null; }); refresh(); },
       }))),
     ]),
     renderItems(d),
     renderPhoto(d),
+    el('div', { class: 'field' }, [
+      el('div', { class: 'head' }, el('span', { class: 'label', text: '样式' })),
+      stylePicker(THEMES[d.style] ? d.style : 'thermal', (key) => { patchDraft((n) => { n.style = key; }); renderForm(); }),
+    ]),
   ]);
 
   if (showMore) {
     const counter = el('span', { class: 'counter', id: 'note-count' });
     const note = el('textarea', {
-      id: 'i-note', name: 'note', rows: '3', 'aria-describedby': 'e-note',
-      placeholder: "What made it worth remembering",
+      id: 'i-note', name: 'note', rows: '3', 'aria-describedby': 'e-note', placeholder: '为什么值得记住',
       oninput: (e) => { patchDraft((n) => { n.note = e.target.value; }); refresh(); },
     });
     note.value = d.note;
     form.append(
-      field('location', 'Location', el('div', { class: 'box' },
-        input('location', { type: 'text', placeholder: 'City, park or address', value: d.location }))),
-      field('note', 'Note', el('div', { class: 'box' }, note), counter));
+      field('location', '地点', el('div', { class: 'box' },
+        input('location', { type: 'text', placeholder: '城市、公园或地址', value: d.location }))),
+      field('note', '备注', el('div', { class: 'box' }, note), counter));
   } else {
-    form.append(el('button', { type: 'button', class: 'link more-link', text: '+ Add location or note',
+    form.append(el('button', { type: 'button', class: 'link more-link', text: '+ 添加地点或备注',
       onclick: () => { showMore = true; renderForm('i-location'); } }));
   }
 
   form.append(el('div', { class: 'print-bar' }, [
     el('p', { class: 'save-error', id: 'save-error', role: 'alert', hidden: '' }),
-    el('button', { class: 'btn', id: 'print', type: 'submit', text: 'Print' }),
+    el('button', { class: 'btn', id: 'print', type: 'submit', text: '打印' }),
   ]));
 
   view.replaceChildren(form);
   refresh();
+  window.scrollTo(0, keepScroll);
   if (focusId && $(focusId)) $(focusId).focus();
+}
+
+function renderCategory(d, i) {
+  const value = d.items[i].category || '';
+  if (customRows.has(i)) {
+    const commit = (e) => {
+      customRows.delete(i);
+      patchItem(i, { category: e.target.value.trim() });
+      renderForm();
+    };
+    return el('div', { class: 'cat' }, el('input', {
+      id: 'i-item-' + i + '-category', type: 'text', value, placeholder: '分类名称', maxlength: String(LIMITS.category),
+      'aria-label': '第 ' + (i + 1) + ' 项的自定义分类', autocomplete: 'off', onchange: commit, onblur: commit,
+    }));
+  }
+  // Defaults, plus any custom categories already used on this receipt.
+  const used = d.items.map((it) => it.category).filter((c) => c && !CATEGORIES.includes(c));
+  const options = CATEGORIES.concat(Array.from(new Set(used)));
+  const select = el('select', {
+    id: 'i-item-' + i + '-category', class: value ? null : 'none', 'aria-label': '第 ' + (i + 1) + ' 项的分类',
+    onchange: (e) => {
+      if (e.target.value === '__custom') { customRows.add(i); renderForm('i-item-' + i + '-category'); return; }
+      patchItem(i, { category: e.target.value });
+      e.target.classList.toggle('none', !e.target.value);
+      // A lone item may be unnamed only while it has no category, so errors can change.
+      refresh();
+    },
+  }, [
+    el('option', { value: '', text: '＋ 分类' }),
+    ...options.map((c) => el('option', { value: c, text: c })),
+    el('option', { value: '__custom', text: '自定义…' }),
+  ]);
+  select.value = value;
+  return el('div', { class: 'cat' }, select);
 }
 
 function renderItems(d) {
@@ -777,58 +1013,61 @@ function renderItems(d) {
     el('div', { class: 'row' }, [
       el('div', { class: 'box' }, el('input', {
         id: 'i-item-' + i + '-name', type: 'text', autocomplete: 'off', value: it.name,
-        placeholder: solo ? 'Item (optional)' : 'Item', 'aria-label': 'Item ' + (i + 1) + ' name',
+        placeholder: solo ? '项目（可不填）' : '项目', 'aria-label': '第 ' + (i + 1) + ' 项名称',
         'aria-describedby': 'e-item-' + i, enterkeyhint: 'next',
-        oninput: (e) => { patchDraft((n) => { n.items = n.items.map((x, j) => j === i ? { name: e.target.value, amount: x.amount } : x); }); refresh(); },
+        oninput: (e) => { patchItem(i, { name: e.target.value }); refresh(); },
       })),
       el('div', { class: 'box amount' }, [
         el('span', { text: '$', 'aria-hidden': 'true' }),
         el('input', {
           id: 'i-item-' + i + '-amount', type: 'text', inputmode: 'decimal', autocomplete: 'off', value: it.amount,
-          placeholder: '0.00', 'aria-label': 'Item ' + (i + 1) + ' amount in dollars',
+          placeholder: '0.00', 'aria-label': '第 ' + (i + 1) + ' 项金额（美元）',
           'aria-describedby': 'e-item-' + i, enterkeyhint: 'next',
-          oninput: (e) => { patchDraft((n) => { n.items = n.items.map((x, j) => j === i ? { name: x.name, amount: e.target.value } : x); }); refresh(); },
+          oninput: (e) => { patchItem(i, { amount: e.target.value }); refresh(); },
         }),
       ]),
-      solo ? null : el('button', { type: 'button', class: 'remove', 'aria-label': 'Remove item ' + (i + 1), text: '×',
-        onclick: () => { patchDraft((n) => { n.items = n.items.filter((x, j) => j !== i); }); renderForm(); } }),
+      solo ? null : el('button', { type: 'button', class: 'remove', 'aria-label': '删除第 ' + (i + 1) + ' 项', text: '×',
+        onclick: () => { customRows.clear(); patchDraft((n) => { n.items = n.items.filter((x, j) => j !== i); }); renderForm(); } }),
     ]),
+    renderCategory(d, i),
     el('p', { class: 'error', id: 'e-item-' + i, role: 'alert', hidden: '' }),
   ]));
 
   const canAdd = d.items.length < LIMITS.items;
   return el('div', { class: 'items' }, [
-    el('div', { class: 'head' }, el('span', { class: 'label', text: 'Items' })),
+    el('div', { class: 'head' }, el('span', { class: 'label', text: '花费明细' })),
     ...rows,
     el('div', { class: 'items-foot' }, [
-      canAdd ? el('button', { type: 'button', class: 'link', id: 'add-item', text: '+ Add item', onclick: addItem }) : el('span'),
-      el('div', { class: 'running', 'aria-live': 'off' }, [el('span', { text: 'Total' }), el('b', { id: 'running-total' })]),
+      canAdd ? el('button', { type: 'button', class: 'link', id: 'add-item', text: '+ 添加一项', onclick: addItem }) : el('span'),
+      el('div', { class: 'running' }, [el('span', { text: '合计' }), el('b', { id: 'running-total' })]),
     ]),
   ]);
 }
 
+// A new row starts in the previous row's category, so a run of items in one category is quick to enter.
 function addItem() {
-  if (state.draft.items.length >= LIMITS.items) return;
-  patchDraft((n) => { n.items = n.items.concat({ name: '', amount: '' }); });
+  const items = state.draft.items;
+  if (items.length >= LIMITS.items) return;
+  const category = items[items.length - 1].category || '';
+  patchDraft((n) => { n.items = n.items.concat({ name: '', amount: '', category }); });
   renderForm('i-item-' + (state.draft.items.length - 1) + '-name');
 }
 
 function renderPhoto(d) {
-  const head = el('div', { class: 'head' }, el('span', { class: 'label', text: 'Photo ' }));
-  head.firstChild.append(el('small', { text: '· optional' }));
+  const head = el('div', { class: 'head' }, optionalLabel('照片'));
   if (d.photo) {
     const px = 2;
-    const c = el('canvas', { width: d.photo.w * px, height: d.photo.h * px, role: 'img', 'aria-label': 'Photo preview in black and white' });
+    const c = el('canvas', { width: d.photo.w * px, height: d.photo.h * px, role: 'img', 'aria-label': '照片的黑白像素预览' });
     const ctx = c.getContext('2d');
     ctx.fillStyle = INK;
     drawPhoto(ctx, d.photo, 0, 0, px);
     return el('div', { class: 'field' }, [head, el('div', { class: 'photo-preview' }, [
       c,
-      el('button', { type: 'button', class: 'link', text: 'Remove photo',
+      el('button', { type: 'button', class: 'link', text: '移除照片',
         onclick: () => { patchDraft((n) => { n.photo = null; }); renderForm(); } }),
     ])]);
   }
-  const file = el('input', { type: 'file', accept: 'image/*', id: 'i-photo', 'aria-label': 'Add a photo',
+  const file = el('input', { type: 'file', accept: 'image/*', id: 'i-photo', 'aria-label': '添加照片',
     onchange: async (e) => {
       const f = e.target.files && e.target.files[0];
       if (!f) return;
@@ -838,10 +1077,10 @@ function renderPhoto(d) {
         renderForm();
       } catch (err) {
         e.target.value = '';
-        toast("Couldn't read that photo. Try another one.");
+        toast('无法读取这张照片，换一张试试。');
       }
     } });
-  return el('div', { class: 'field' }, [head, el('label', { class: 'photo-pick' }, [file, '＋ Add a photo'])]);
+  return el('div', { class: 'field' }, [head, el('label', { class: 'photo-pick' }, [file, '＋ 添加照片（会印成黑白像素风格）'])]);
 }
 
 // Enter moves through the fields instead of printing, so a long list can be typed quickly.
@@ -849,8 +1088,9 @@ function onFormKey(e) {
   if (e.key !== 'Enter' || e.target.tagName !== 'INPUT' || e.isComposing) return;
   e.preventDefault();
   const id = e.target.id;
-  const m = /^i-item-(\d+)-(name|amount)$/.exec(id);
+  const m = /^i-item-(\d+)-(name|amount|category)$/.exec(id);
   if (id === 'i-title') $('i-item-0-name').focus();
+  else if (m && m[2] === 'category') e.target.blur();
   else if (m && m[2] === 'name') $('i-item-' + m[1] + '-amount').focus();
   else if (m) {
     const next = $('i-item-' + (Number(m[1]) + 1) + '-name');
@@ -899,9 +1139,7 @@ function onPrint(e) {
     refresh();
     const first = Array.from(view.querySelectorAll('.error[id^="e-"]')).find((m) => !m.hidden);
     const key = first.id.slice(2);
-    const target = key.startsWith('item-')
-      ? $('i-' + key + (result.errors[key].includes('ame') && !result.errors[key].includes('amount') ? '-name' : '-amount'))
-      : $('i-' + key);
+    const target = $('i-' + key + (result.focus[key] ? '-' + result.focus[key] : ''));
     target.focus();
     target.scrollIntoView({ block: 'center', behavior: 'smooth' });
     return;
@@ -909,18 +1147,19 @@ function onPrint(e) {
 
   // Lock the button right away; the write happens on the next tick so the locked state paints first.
   button.disabled = true;
-  button.textContent = 'Printing…';
+  button.textContent = '打印中…';
   setTimeout(() => {
     try {
       printed = commit(result.input);
       attempted = false;
       showMore = false;
+      customRows.clear();
       renderStage();
     } catch (err) {
       button.disabled = false;
-      button.textContent = 'Print';
+      button.textContent = '打印';
       const msg = $('save-error');
-      msg.textContent = 'Receipt not saved. Please try again.';
+      msg.textContent = '小票未保存，请重试。';
       msg.hidden = false;
     }
   }, 0);
@@ -935,10 +1174,10 @@ function renderStage() {
   const feed = el('div', { class: 'feed' }, canvas);
   const viewIt = () => { printed = null; location.hash = '#/r/' + receipt.id; };
   const after = el('div', { class: 'after' }, [
-    el('p', { text: '✓ Saved to your receipts' }),
+    el('p', { text: '✓ 已收进小票夹' }),
     el('div', { class: 'row' }, [
-      el('button', { class: 'btn secondary', text: 'View Receipt', onclick: viewIt }),
-      el('button', { class: 'btn', text: 'Print Another', onclick: () => { printed = null; renderForm(); window.scrollTo(0, 0); } }),
+      el('button', { class: 'btn secondary', text: '查看小票', onclick: viewIt }),
+      el('button', { class: 'btn', text: '再印一张', onclick: () => { printed = null; renderForm(); window.scrollTo(0, 0); } }),
     ]),
   ]);
   view.replaceChildren(el('div', { class: 'stage' }, [el('div', { class: 'slot', 'aria-hidden': 'true' }), feed, after]));
@@ -955,7 +1194,7 @@ function renderStage() {
     feed.classList.add('done');
     after.classList.add('show');
     canvas.addEventListener('click', viewIt);
-    announce('Saved to your receipts');
+    announce('已收进小票夹');
   };
   if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
     feed.classList.add('instant');
@@ -970,12 +1209,12 @@ function renderStage() {
 /* Receipt folder */
 
 function renderList() {
-  setChrome('Receipts', 'receipts');
+  setChrome('小票夹', 'receipts');
   if (!state.receipts.length) {
     view.replaceChildren(el('div', { class: 'empty' }, [
-      el('h2', { text: 'No receipts yet' }),
-      el('p', { text: 'Print something worth remembering.' }),
-      el('a', { class: 'btn small', href: '#/new', text: 'Print Your First', style: 'text-decoration:none;display:inline-block' }),
+      el('h2', { text: '还没有小票' }),
+      el('p', { text: '把值得记住的花费印成一张小票。' }),
+      el('a', { class: 'btn small', href: '#/new', text: '印第一张', style: 'text-decoration:none;display:inline-block' }),
     ]));
     return;
   }
@@ -989,28 +1228,37 @@ function renderList() {
 
 /* Detail */
 
-function renderDetail(id) {
+function renderDetail(id, keepScroll) {
   const r = state.receipts.find((x) => x.id === id);
   if (!r) { location.replace('#/receipts'); return; }
 
-  const back = el('a', { class: 'icon-btn', href: '#/receipts', text: '‹ Receipts',
+  const back = el('a', { class: 'icon-btn', href: '#/receipts', text: '‹ 小票夹',
     style: 'display:inline-flex;align-items:center;text-decoration:none;color:inherit' });
   const menu = el('div', { class: 'menu', hidden: '', role: 'menu' }, [
-    el('button', { role: 'menuitem', text: 'Save Image', onclick: () => { menu.hidden = true; saveImage(r); } }),
-    el('button', { role: 'menuitem', class: 'danger', text: 'Delete Receipt', onclick: () => { menu.hidden = true; confirmDelete(r); } }),
+    el('button', { role: 'menuitem', text: '保存图片', onclick: () => { menu.hidden = true; saveImage(r); } }),
+    el('button', { role: 'menuitem', class: 'danger', text: '删除小票', onclick: () => { menu.hidden = true; confirmDelete(r); } }),
   ]);
-  const more = el('button', { class: 'icon-btn', 'aria-label': 'More', 'aria-haspopup': 'menu', text: '•••',
+  const more = el('button', { class: 'icon-btn', 'aria-label': '更多', 'aria-haspopup': 'menu', text: '•••',
     onclick: (e) => { e.stopPropagation(); menu.hidden = !menu.hidden; } });
   setChrome('', 'receipts', back, el('div', { style: 'position:relative' }, [more, menu]));
-  view.replaceChildren(el('div', { class: 'detail' }, drawReceipt(r)));
-  window.scrollTo(0, 0);
+
+  const y = window.scrollY;
+  view.replaceChildren(el('div', { class: 'detail' }, [
+    drawReceipt(r),
+    el('div', { class: 'styles-head', text: '更换样式' }),
+    stylePicker(THEMES[r.style] ? r.style : 'thermal', (key) => {
+      try { restyleReceipt(r.id, key); renderDetail(r.id, true); }
+      catch (err) { toast('样式未保存，请重试。'); }
+    }, 'inline'),
+  ]));
+  window.scrollTo(0, keepScroll ? y : 0);
 }
 document.addEventListener('click', () => document.querySelectorAll('.menu').forEach((m) => { m.hidden = true; }));
 
 async function saveImage(r) {
   try {
     const blob = await exportBlob(r);
-    const name = 'receipt-' + r.purchaseDate + '.png';
+    const name = '小票-' + r.purchaseDate + '.png';
     const file = new File([blob], name, { type: 'image/png' });
     // On phones the share sheet offers "Save Image"; elsewhere download the file.
     if (window.matchMedia('(pointer: coarse)').matches && navigator.canShare && navigator.canShare({ files: [file] })) {
@@ -1021,10 +1269,10 @@ async function saveImage(r) {
     const a = el('a', { href: url, download: name });
     document.body.append(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 5000);
-    toast('Image saved');
+    toast('图片已保存');
   } catch (err) {
     if (err && err.name === 'AbortError') return;
-    toast("Couldn't save the image. Please try again.");
+    toast('图片保存失败，请重试。');
   }
 }
 
@@ -1034,7 +1282,7 @@ function confirmDelete(r) {
   $('confirm-ok').onclick = () => {
     dialog.close();
     try { removeReceipt(r.id); location.hash = '#/receipts'; }
-    catch (err) { toast("Couldn't delete. Please try again."); }
+    catch (err) { toast('删除失败，请重试。'); }
   };
   dialog.showModal();
 }

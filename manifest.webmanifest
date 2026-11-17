@@ -1,7 +1,7 @@
 {
-  "name": "Receipts",
-  "short_name": "Receipts",
-  "description": "Print a keepsake receipt for a purchase worth remembering.",
+  "name": "小票",
+  "short_name": "小票",
+  "description": "把值得记住的花费印成一张小票。",
   "start_url": "./",
   "display": "standalone",
   "background_color": "#f1efea",
