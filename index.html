@@ -2573,10 +2573,10 @@ function renderMovieForm(focusId) {
     ]),
     el('section', { class: 'card' }, [
       el('div', { class: 'card-head' }, el('h2', { text: t('mv.card.seat') })),
-      field('mv-cinema', t('mv.cinema'), text('mv-cinema', 'cinema', { placeholder: t('ph.cinema') })),
+      field('mv-cinema', t('mv.cinema'), text('mv-cinema', 'cinema')),
       el('div', { class: 'two' }, [
         field('mv-hall', t('mv.hall'), text('mv-hall', 'hall')),
-        field('mv-language', t('mv.lang'), text('mv-language', 'language', { placeholder: t('ph.lang') })),
+        field('mv-language', t('mv.lang'), text('mv-language', 'language')),
       ]),
       el('label', { class: 'sub-label', for: 'i-mv-seats', text: t('mv.seats') }),
       chipInput('i-mv-seats', d.seats, '', MOVIE_LIMITS.seat, (v) => patchMovie((n) => { n.seats = v; })),
