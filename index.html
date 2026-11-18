@@ -245,6 +245,13 @@
     mix-blend-mode: overlay; opacity: calc(.3 + var(--shine, 0) * .55);
   }
 
+  .recap-page { display: flex; flex-direction: column; gap: 14px; padding-top: 4px; }
+  .recap-frame { border-radius: 12px; overflow: hidden; background: #141114; min-height: 180px; display: flex; align-items: center; justify-content: center; }
+  .recap-frame canvas { display: block; width: 100%; height: auto; }
+  .recap-wait { color: rgba(244,237,225,.6); font-size: 14px; }
+  .row-go { color: var(--muted); font-size: 22px; line-height: 1; }
+  .recap-link span:first-child::before { content: "✦ "; color: #c9a14f; }
+
   /* Style picker */
   .styles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
   .styles button { border: 2px solid transparent; background: #e9e6df; border-radius: 14px; padding: 8px 4px 6px; display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 600; color: var(--muted); }
@@ -429,6 +436,10 @@ const I18N = {
     'backup.saved': '备份已保存', 'backup.exportFail': '备份没导出成功，请重试。', 'backup.badFile': '这不是小票的备份文件。',
     'backup.nothing': '备份里的小票这里都已经有了。', 'backup.importFail': '恢复失败，可能是存储空间不够。',
     'backup.restored': '已恢复 {n} 张', 'backup.restoredSkip': '已恢复 {n} 张，跳过 {m} 张已有的',
+    'rc.title': '观影年鉴', 'rc.kicker': 'MY YEAR AT THE MOVIES', 'rc.films': '部电影', 'rc.cinema': '最常去的影院', 'rc.times': '{n} 次',
+    'rc.spent': '票价合计', 'rc.friend': '最常一起看', 'rc.format': '最爱的格式', 'rc.busiest': '看得最多的月份', 'rc.month': '{m} 月',
+    'rc.films.n': '{n} 部', 'rc.specials': '首映与特别场', 'rc.page': '观影年鉴', 'rc.making': '正在生成…', 'rc.save': '保存或分享图片',
+    'rc.year': '年份', 'rc.alt': '{year} 年观影年鉴，共 {n} 部电影', 'rc.file': '观影年鉴-{year}', 'rc.entry': '{year} 观影年鉴',
     'motion.enable': '✦ 开启动态光效', 'motion.denied': '没有获得“动作与方向”权限，可以在 Safari 设置里开启。',
   },
   en: {
@@ -512,6 +523,10 @@ const I18N = {
     'backup.saved': 'Backup saved', 'backup.exportFail': "Couldn't export the backup. Try again.", 'backup.badFile': "That isn't a receipts backup file.",
     'backup.nothing': 'Everything in that backup is already here.', 'backup.importFail': "Couldn't restore. Storage may be full.",
     'backup.restored': 'Restored {n}', 'backup.restoredSkip': 'Restored {n}, skipped {m} already here',
+    'rc.title': 'Year in film', 'rc.kicker': 'MY YEAR AT THE MOVIES', 'rc.films': 'films', 'rc.cinema': 'MOST VISITED CINEMA', 'rc.times': '{n}×',
+    'rc.spent': 'SPENT ON TICKETS', 'rc.friend': 'MOST WATCHED WITH', 'rc.format': 'FAVOURITE FORMAT', 'rc.busiest': 'BUSIEST MONTH', 'rc.month': '{en}',
+    'rc.films.n': '{n} films', 'rc.specials': 'PREMIERES AND SPECIALS', 'rc.page': 'Year in film', 'rc.making': 'Making your recap…', 'rc.save': 'Save or share image',
+    'rc.year': 'Year', 'rc.alt': '{year} year in film, {n} films', 'rc.file': 'year-in-film-{year}', 'rc.entry': '{year} year in film',
     'motion.enable': '✦ Turn on motion effect', 'motion.denied': 'Motion access was not allowed. You can turn it on in Safari settings.',
   },
 };
@@ -2682,9 +2697,10 @@ function onPrintMovie(e) {
 }
 
 // A whole-width row that opens an optional part of the form.
-function rowButton(label, onclick, extraClass) {
+function rowButton(label, onclick, extraClass, opens) {
   return el('button', { type: 'button', class: 'row-btn' + (extraClass ? ' ' + extraClass : ''), onclick },
-    [el('span', { text: label }), el('span', { class: 'row-add', text: t('row.add'), 'aria-hidden': 'true' })]);
+    [el('span', { text: label }), opens ? el('span', { class: 'row-go', text: '›', 'aria-hidden': 'true' })
+      : el('span', { class: 'row-add', text: t('row.add'), 'aria-hidden': 'true' })]);
 }
 
 function renderCategory(d, i) {
@@ -3261,9 +3277,192 @@ function renderList() {
     both ? el('div', { class: 'seg kind-seg', role: 'radiogroup', 'aria-label': t('aria.kind') }, ['all', 'receipt', 'movie'].map((k) =>
       el('button', { type: 'button', role: 'radio', 'aria-checked': String(k === listFilter), text: t('filter.' + k),
         onclick: () => { listFilter = k; renderList(); } }))) : null,
+    // The year in film, once there are movie tickets and they are what's on show.
+    hasMovies && (listFilter === 'movie' || !hasReceipts)
+      ? el('section', { class: 'card' }, rowButton(t('rc.entry', { year: movieYears()[0] }), () => { location.hash = '#/recap/' + movieYears()[0]; }, 'recap-link', true)) : null,
     el('ul', { class: 'list' }, shown.map(listRow)),
     backupCard(),
   ].filter(Boolean));
+}
+
+/* Year in film: one landscape image of every movie ticket in a year, month by month, with a few
+   numbers. Made to be shared, so it is drawn at high resolution on a dark, cinema-like background. */
+
+const movieYears = () => Array.from(new Set(state.receipts.filter((r) => r.kind === 'movie').map((r) => r.purchaseDate.slice(0, 4)))).sort().reverse();
+const moviesIn = (year) => state.receipts.filter((r) => r.kind === 'movie' && r.purchaseDate.slice(0, 4) === year)
+  .sort((a, b) => (a.purchaseDate + (a.time || '')).localeCompare(b.purchaseDate + (b.time || '')));
+
+// The most frequent value, ignoring blanks; null when there is none.
+function mostOf(values) {
+  const n = new Map();
+  for (const v of values) if (v) n.set(v, (n.get(v) || 0) + 1);
+  let best = null;
+  for (const [v, c] of n) if (!best || c > best[1]) best = [v, c];
+  return best;
+}
+
+function yearStats(year) {
+  const ms = moviesIn(year);
+  const spent = new Map();
+  for (const r of ms) if (r.priceMinor != null) spent.set(r.currency, (spent.get(r.currency) || 0) + r.priceMinor);
+  const months = Array.from({ length: 12 }, () => []);
+  for (const r of ms) months[Number(r.purchaseDate.slice(5, 7)) - 1].push(r);
+  const busiest = months.reduce((b, m, i) => (m.length > (b ? months[b].length : 0) ? i : b), null);
+  return {
+    count: ms.length,
+    months,
+    cinema: mostOf(ms.map((r) => r.cinema)),
+    cinemas: new Set(ms.map((r) => r.cinema).filter(Boolean)).size,
+    spent: Array.from(spent, ([code, minor]) => formatMoney(minor, code)).join(' + '),
+    friend: mostOf(ms.flatMap((r) => r.companions || [])),
+    format: mostOf(ms.flatMap((r) => r.formats || [])),
+    busiest: busiest != null && months[busiest].length > 1 ? busiest : null,
+    specials: ms.filter((r) => r.special).length,
+  };
+}
+
+const MONTHS_EN = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+
+async function drawRecap(year, scale) {
+  const ms = moviesIn(year);
+  await Promise.all(ms.map((r) => ensurePoster(r.posterId).catch(() => null)));
+  const S = yearStats(year);
+  const RW = 1600, RH = 1000, M = 56;
+  const c = document.createElement('canvas');
+  c.width = RW * scale; c.height = RH * scale;
+  c.style.width = '100%'; c.style.height = 'auto';
+  c.className = 'recap';
+  const ctx = c.getContext('2d');
+  ctx.scale(scale, scale);
+  const ink = '#f4ede1', muted = 'rgba(244,237,225,0.55)', faint = 'rgba(244,237,225,0.09)', gold = '#e3bb6c';
+  const text = (str, font, x, y, color, opts) => {
+    opts = opts || {};
+    ctx.font = font; ctx.fillStyle = color; ctx.textAlign = opts.align || 'left'; ctx.textBaseline = opts.base || 'alphabetic';
+    if ('letterSpacing' in ctx) ctx.letterSpacing = (opts.spacing || 0) + 'px';
+    ctx.fillText(str, x, y);
+    if ('letterSpacing' in ctx) ctx.letterSpacing = '0px';
+  };
+  const fit = (str, font, maxW) => {
+    ctx.font = font;
+    if (ctx.measureText(str).width <= maxW) return str;
+    while (str.length > 1 && ctx.measureText(str + '…').width > maxW) str = str.slice(0, -1);
+    return str + '…';
+  };
+
+  // Background: deep warm black, a soft spotlight behind the stats, grain, and film-strip edges.
+  ctx.fillStyle = '#141114'; ctx.fillRect(0, 0, RW, RH);
+  const spot = ctx.createRadialGradient(260, 300, 40, 260, 300, 700);
+  spot.addColorStop(0, 'rgba(227,187,108,0.16)'); spot.addColorStop(1, 'rgba(227,187,108,0)');
+  ctx.fillStyle = spot; ctx.fillRect(0, 0, RW, RH);
+  const rand = rng(hash32('recap' + year));
+  for (let i = 0; i < 9000; i++) { ctx.fillStyle = rand() < 0.5 ? 'rgba(255,255,255,0.025)' : 'rgba(0,0,0,0.25)'; ctx.fillRect(rand() * RW, rand() * RH, 1.2, 1.2); }
+  ctx.fillStyle = 'rgba(244,237,225,0.07)';
+  for (let x = 18; x < RW; x += 34) { ctx.beginPath(); ctx.roundRect(x, 12, 16, 10, 2.5); ctx.roundRect(x, RH - 22, 16, 10, 2.5); ctx.fill(); }
+
+  // Left: the year, the title and the numbers.
+  const LX = M + 8;
+  text(year, 'bold 132px ' + TICKET_SERIF, LX - 6, M + 128, gold);
+  text(t('rc.title'), '600 30px ' + TICKET_SERIF, LX, M + 180, ink);
+  text(t('rc.kicker'), '600 12px ' + SANS, LX, M + 208, muted, { spacing: 3.5 });
+  let y = M + 300;
+  text(String(S.count), 'bold 96px ' + TICKET_SERIF, LX - 4, y + 10, ink);
+  ctx.font = 'bold 96px ' + TICKET_SERIF;
+  text(t('rc.films'), '600 20px ' + SANS, LX + ctx.measureText(String(S.count)).width + 10, y + 4, muted);
+  y += 58;
+  const rows = [
+    S.cinema && [t('rc.cinema'), S.cinema[0], t('rc.times', { n: S.cinema[1] })],
+    S.spent && [t('rc.spent'), S.spent, null],
+    S.friend && [t('rc.friend'), S.friend[0], t('rc.times', { n: S.friend[1] })],
+    S.format && [t('rc.format'), S.format[0], null],
+    S.busiest != null && [t('rc.busiest'), t('rc.month', { m: S.busiest + 1, en: MONTHS_EN[S.busiest] }), t('rc.films.n', { n: S.months[S.busiest].length })],
+    S.specials && [t('rc.specials'), String(S.specials), null],
+  ].filter(Boolean).slice(0, 5);
+  for (const [label, value, note] of rows) {
+    ctx.strokeStyle = faint; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(LX, y); ctx.lineTo(LX + 400, y); ctx.stroke();
+    text(label, '600 11.5px ' + SANS, LX, y + 26, muted, { spacing: 2.4 });
+    const v = fit(value, '600 25px ' + SANS, note ? 300 : 400);
+    text(v, '600 25px ' + SANS, LX, y + 62, ink);
+    if (note) text(note, '500 14px ' + SANS, LX + 400, y + 61, gold, { align: 'right' });
+    y += 86;
+  }
+  text(lang === 'zh' ? '小票 · RECEIPTS' : 'RECEIPTS', '600 11px ' + SANS, LX, RH - M + 6, 'rgba(244,237,225,0.35)', { spacing: 3 });
+
+  // Right: twelve months, each with its films in order, poster and title.
+  const GX = 540, GR = RW - M, top = M + 6, rowH = (RH - M * 2 - 12) / 12;
+  const PH = Math.round(rowH - 16), PW = Math.round(PH * 2 / 3);
+  ctx.strokeStyle = faint;
+  for (let m = 0; m < 12; m++) {
+    const ry = top + m * rowH;
+    ctx.beginPath(); ctx.moveTo(GX, ry + rowH); ctx.lineTo(GR, ry + rowH); ctx.stroke();
+    const items = S.months[m];
+    text(lang === 'zh' ? (m + 1) + '月' : MONTHS_EN[m], (lang === 'zh' ? '600 19px ' + TICKET_SERIF : '600 15px ' + SANS), GX, ry + rowH / 2 + 2, items.length ? ink : 'rgba(244,237,225,0.3)', { base: 'middle', spacing: lang === 'zh' ? 0 : 2 });
+    if (lang === 'zh') text(MONTHS_EN[m], '600 9px ' + SANS, GX + 52, ry + rowH / 2 + 2, 'rgba(244,237,225,0.3)', { base: 'middle', spacing: 1.5 });
+    const x0 = GX + 92, avail = GR - x0;
+    if (!items.length) { ctx.fillStyle = 'rgba(244,237,225,0.12)'; ctx.fillRect(x0, ry + rowH / 2, 26, 1.5); continue; }
+    // With titles while they fit; posters only when the month is busy; a "+n" when even that overflows.
+    const withTitle = PW + 10 + 118 + 18, bare = PW + 10;
+    const full = items.length * withTitle <= avail;
+    const step = full ? withTitle : bare;
+    const room = Math.floor((avail + 10) / step);
+    const shown = items.length > room ? items.slice(0, room - 1) : items;
+    shown.forEach((r, i) => {
+      const x = x0 + i * step, py = ry + (rowH - PH) / 2;
+      const img = r.posterId ? posterCache.get(r.posterId) : null;
+      ctx.save();
+      ctx.shadowColor = 'rgba(0,0,0,0.5)'; ctx.shadowBlur = 8; ctx.shadowOffsetY = 3;
+      ctx.beginPath(); ctx.roundRect(x, py, PW, PH, 3);
+      ctx.fillStyle = (r.colors && r.colors.accent) || '#5a4a3a'; ctx.fill();
+      ctx.restore();
+      ctx.save(); ctx.beginPath(); ctx.roundRect(x, py, PW, PH, 3); ctx.clip();
+      if (img) ctx.drawImage(img, x, py, PW, PH);
+      ctx.restore();
+      if (full) {
+        const tf = '600 14px ' + TICKET_SERIF;
+        ctx.font = tf;
+        const lines = wrap(ctx, r.title, 118).slice(0, 2);
+        if (wrap(ctx, r.title, 118).length > 2) lines[1] = fit(lines[1] + '…', tf, 118);
+        lines.forEach((ln, k) => text(ln, tf, x + PW + 10, py + 17 + k * 18, ink));
+        text(r.purchaseDate.slice(5).replace('-', '.') + (r.special ? '  · ' + t('special.' + r.special) : ''), '500 11px ' + MONO, x + PW + 10, py + PH - 3, muted);
+      }
+    });
+    if (shown.length < items.length) {
+      const x = x0 + shown.length * step, cy = ry + rowH / 2;
+      text('+' + (items.length - shown.length), '600 16px ' + SANS, x + 4, cy + 1, gold, { base: 'middle' });
+    }
+  }
+  return c;
+}
+
+// The recap page: the image, a year switch when there are several years, and save or share.
+let recapRun = 0;
+async function renderRecap(year) {
+  const years = movieYears();
+  if (!years.length) { location.replace('#/receipts'); return; }
+  if (!years.includes(year)) year = years[0];
+  const back = el('a', { class: 'icon-btn', href: '#/receipts', text: t('back'), style: 'display:inline-flex;align-items:center;text-decoration:none;color:inherit' });
+  setChrome(t('rc.page'), 'receipts', back);
+  const run = ++recapRun;
+  const frame = el('div', { class: 'recap-frame' }, el('div', { class: 'recap-wait', text: t('rc.making') }));
+  const save = el('button', { class: 'btn', text: t('rc.save'), disabled: '' });
+  view.replaceChildren(el('div', { class: 'recap-page' }, [
+    years.length > 1 ? el('div', { class: 'seg kind-seg', role: 'radiogroup', 'aria-label': t('rc.year') }, years.map((y) =>
+      el('button', { type: 'button', role: 'radio', 'aria-checked': String(y === year), text: y, onclick: () => { location.hash = '#/recap/' + y; } }))) : null,
+    frame,
+    save,
+  ]));
+  window.scrollTo(0, 0);
+  const canvas = await drawRecap(year, 2);
+  if (run !== recapRun) return;
+  canvas.setAttribute('role', 'img');
+  canvas.setAttribute('aria-label', t('rc.alt', { year, n: moviesIn(year).length }));
+  frame.replaceChildren(canvas);
+  save.disabled = false;
+  save.onclick = async () => {
+    try {
+      const blob = await new Promise((res, rej) => canvas.toBlob((b) => b ? res(b) : rej(new Error('export failed')), 'image/png'));
+      await saveFile(blob, t('rc.file', { year }) + '.png', t('toast.imgSaved'));
+    } catch (err) { if (!err || err.name !== 'AbortError') toast(t('toast.imgFail')); }
+  };
 }
 
 /* Keeping data safe */
@@ -3581,6 +3780,7 @@ function route() {
   const hash = location.hash;
   if (hash.startsWith('#/r/')) return renderDetail(decodeURIComponent(hash.slice(4)));
   if (hash === '#/receipts') return renderList();
+  if (hash.startsWith('#/recap/')) return renderRecap(hash.slice(8));
   if (printed) return renderStage();
   renderForm();
 }
