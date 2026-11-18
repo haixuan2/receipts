@@ -238,11 +238,11 @@
       linear-gradient(115deg, #ff6b8b 0%, #ffd36b 16%, #6bffb8 33%, #6bc8ff 50%, #b36bff 66%, #ff6b8b 83%, #ffd36b 100%);
     background-size: 100% 100%, 300% 300%;
     background-position: 0 0, var(--mx, 50%) var(--my, 50%);
-    mix-blend-mode: color-dodge; opacity: calc(.1 + var(--shine, 0) * .22);
+    mix-blend-mode: color-dodge; opacity: calc(.18 + var(--shine, 0) * .4);
   }
   .holo-glare {
     background: radial-gradient(farthest-corner circle at var(--mx, 50%) var(--my, 50%), rgba(255,255,255,.75) 0%, rgba(255,255,255,.18) 28%, rgba(0,0,0,.18) 90%);
-    mix-blend-mode: overlay; opacity: calc(.2 + var(--shine, 0) * .4);
+    mix-blend-mode: overlay; opacity: calc(.3 + var(--shine, 0) * .55);
   }
 
   /* Style picker */
@@ -2517,7 +2517,7 @@ function chipInput(id, values, placeholder, maxLen, onChange, suggestions) {
       ...values.map((v, i) => el('span', { class: 'chip' }, [v,
         el('button', { type: 'button', 'aria-label': t('aria.removeName', { name: v }), text: '×',
           onclick: () => { onChange(values.filter((_, j) => j !== i)); renderForm(id); } })])),
-      el('input', { id, type: 'text', autocomplete: 'off', enterkeyhint: 'done', placeholder: values.length ? t('names.phMore') : placeholder,
+      el('input', { id, type: 'text', autocomplete: 'off', enterkeyhint: 'done', placeholder: values.length && placeholder ? t('names.phMore') : placeholder,
         onkeydown: (e) => { if (e.key === 'Enter' && !e.isComposing) { e.preventDefault(); add(e.target.value); } },
         onchange: (e) => { if (e.target.value.trim()) add(e.target.value); } }),
     ]),
@@ -2575,11 +2575,11 @@ function renderMovieForm(focusId) {
       el('div', { class: 'card-head' }, el('h2', { text: t('mv.card.seat') })),
       field('mv-cinema', t('mv.cinema'), text('mv-cinema', 'cinema', { placeholder: t('ph.cinema') })),
       el('div', { class: 'two' }, [
-        field('mv-hall', t('mv.hall'), text('mv-hall', 'hall', { placeholder: t('ph.hall') })),
+        field('mv-hall', t('mv.hall'), text('mv-hall', 'hall')),
         field('mv-language', t('mv.lang'), text('mv-language', 'language', { placeholder: t('ph.lang') })),
       ]),
       el('label', { class: 'sub-label', for: 'i-mv-seats', text: t('mv.seats') }),
-      chipInput('i-mv-seats', d.seats, t('ph.seats'), MOVIE_LIMITS.seat, (v) => patchMovie((n) => { n.seats = v; })),
+      chipInput('i-mv-seats', d.seats, '', MOVIE_LIMITS.seat, (v) => patchMovie((n) => { n.seats = v; })),
       el('span', { class: 'sub-label', text: t('mv.formats') }),
       formatChips,
     ]),
