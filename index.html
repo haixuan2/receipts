@@ -226,6 +226,28 @@
   .hint-card .icon-btn { font-size: 22px; color: var(--muted); }
   .empty { padding-top: 16vh; }
 
+  /* Laser-foil ticket */
+  .holo { perspective: 900px; touch-action: pan-y; -webkit-user-select: none; user-select: none; }
+  .holo-inner { position: relative; border-radius: 14px; transform: rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg));
+    transition: transform .6s cubic-bezier(.2, .8, .2, 1); will-change: transform; }
+  .holo-inner.active, .holo-inner.sweeping { transition: transform .08s linear; }
+  .holo-inner canvas { display: block; }
+  .holo-foil, .holo-glare { position: absolute; inset: 0; border-radius: 14px; pointer-events: none; }
+  .holo-foil {
+    background:
+      repeating-linear-gradient(-45deg, rgba(255,255,255,.10) 0 1px, transparent 1px 3px),
+      linear-gradient(115deg, #ff6b8b 0%, #ffd36b 16%, #6bffb8 33%, #6bc8ff 50%, #b36bff 66%, #ff6b8b 83%, #ffd36b 100%);
+    background-size: 100% 100%, 300% 300%;
+    background-position: 0 0, var(--mx, 50%) var(--my, 50%);
+    mix-blend-mode: color-dodge; opacity: calc(.1 + var(--shine, 0) * .22);
+    transition: opacity .4s;
+  }
+  .holo-glare {
+    background: radial-gradient(farthest-corner circle at var(--mx, 50%) var(--my, 50%), rgba(255,255,255,.75) 0%, rgba(255,255,255,.18) 28%, rgba(0,0,0,.18) 90%);
+    mix-blend-mode: overlay; opacity: calc(.2 + var(--shine, 0) * .4);
+  }
+  @media (prefers-reduced-motion: reduce) { .holo-inner { transition: none; } }
+
   /* Style picker */
   .styles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
   .styles button { border: 2px solid transparent; background: #e9e6df; border-radius: 14px; padding: 8px 4px 6px; display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 600; color: var(--muted); }
@@ -2084,7 +2106,77 @@ function drawTicket(r, scale) {
 
   canvas.setAttribute('role', 'img');
   canvas.setAttribute('aria-label', movieSpoken(r));
+  canvas.dataset.perf = String(perfY);
+  canvas.dataset.poster = String(P.y + P.h);
+  if (movieWatched(r)) canvas.dataset.hole = hole.x + ',' + hole.y;
   return canvas;
+}
+
+// Laser-foil finish for a ticket on screen: a rainbow foil and a light glare over the canvas, both
+// following the finger (or mouse) while the ticket tilts in 3D; it springs back when let go. A light
+// sweep runs across it once when shown. Images saved from the ticket stay plain.
+function holo(canvas, sweep) {
+  const foil = el('div', { class: 'holo-foil', 'aria-hidden': 'true' });
+  const glare = el('div', { class: 'holo-glare', 'aria-hidden': 'true' });
+  // The overlays are cut to the ticket's outline: side notches at the perforation and the punched hole.
+  const perf = Number(canvas.dataset.perf) || 0;
+  const cuts = ['radial-gradient(circle at 0 ' + perf + 'px, transparent 9px, #000 9.5px)',
+    'radial-gradient(circle at 100% ' + perf + 'px, transparent 9px, #000 9.5px)'];
+  if (canvas.dataset.hole) {
+    const [hx, hy] = canvas.dataset.hole.split(',');
+    cuts.push('radial-gradient(circle at ' + hx + 'px ' + hy + 'px, transparent 7px, #000 7.5px)');
+  }
+  // The foil is lighter over the poster so the artwork keeps its colours.
+  const posterEnd = Number(canvas.dataset.poster) || 0;
+  const foilCuts = cuts.concat('linear-gradient(to bottom, rgba(0,0,0,.35) 0, rgba(0,0,0,.35) ' + posterEnd + 'px, #000 ' + posterEnd + 'px)');
+  for (const [layer, list] of [[foil, foilCuts], [glare, cuts]]) {
+    layer.style.webkitMaskImage = layer.style.maskImage = list.join(', ');
+    layer.style.webkitMaskComposite = 'source-in';
+    layer.style.maskComposite = 'intersect';
+  }
+  const inner = el('div', { class: 'holo-inner' }, [canvas, foil, glare]);
+  const wrap = el('div', { class: 'holo' }, inner);
+  const still = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  const setAt = (x, y) => {
+    x = Math.min(1, Math.max(0, x)); y = Math.min(1, Math.max(0, y));
+    inner.style.setProperty('--ry', ((x - 0.5) * (still ? 0 : 26)).toFixed(2) + 'deg');
+    inner.style.setProperty('--rx', ((0.5 - y) * (still ? 0 : 16)).toFixed(2) + 'deg');
+    inner.style.setProperty('--mx', (x * 100).toFixed(1) + '%');
+    inner.style.setProperty('--my', (y * 100).toFixed(1) + '%');
+    inner.style.setProperty('--shine', Math.min(1, Math.hypot(x - 0.5, y - 0.5) * 2.2).toFixed(2));
+  };
+  // The pointer is tracked on the outer wrapper, which never tilts. Measuring against the tilted ticket
+  // would feed the tilt back into the position (and let the ticket slip out from under the cursor at
+  // its edges), which made it shake.
+  const fromEvent = (e) => {
+    const b = wrap.getBoundingClientRect();
+    setAt((e.clientX - b.left) / b.width, (e.clientY - b.top) / b.height);
+  };
+  const rest = () => { inner.classList.remove('active'); setAt(0.5, 0.5); };
+  let down = false;
+  wrap.addEventListener('pointerdown', (e) => { down = true; inner.classList.add('active'); fromEvent(e); });
+  wrap.addEventListener('pointermove', (e) => {
+    if (down || e.pointerType === 'mouse') { inner.classList.add('active'); fromEvent(e); }
+  });
+  for (const type of ['pointerup', 'pointercancel', 'pointerleave']) wrap.addEventListener(type, () => { down = false; rest(); });
+  setAt(0.5, 0.5);
+
+  // A one-off light sweep from left to right, with a slight turn of the ticket.
+  if (sweep && !still) {
+    const start = performance.now(), dur = 1400;
+    const step = (now) => {
+      if (inner.classList.contains('active')) return;
+      const k = Math.min(1, (now - start) / dur);
+      const ease = k < 0.5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2;
+      inner.classList.add('sweeping');
+      setAt(0.15 + ease * 0.7, 0.35 + Math.sin(k * Math.PI) * 0.1);
+      if (k < 1) requestAnimationFrame(step);
+      else { inner.classList.remove('sweeping'); rest(); }
+    };
+    setTimeout(() => requestAnimationFrame(step), 250);
+  }
+  return wrap;
 }
 
 function movieSpoken(r) {
@@ -3062,7 +3154,8 @@ function renderStage() {
     finished = true;
     feed.classList.add('done');
     after.classList.add('show');
-    canvas.addEventListener('click', viewIt);
+    if (receipt.kind === 'movie') feed.replaceChildren(holo(canvas, true));
+    else canvas.addEventListener('click', viewIt);
     announce(t('stage.saved'));
   };
   if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
@@ -3276,7 +3369,7 @@ function renderDetail(id, keepScroll) {
       ensurePoster(r.posterId).then((img) => { if (img && location.hash === '#/r/' + r.id) renderDetail(r.id, true); }).catch(() => {});
     }
     view.replaceChildren(el('div', { class: 'detail' }, [
-      drawReceipt(r),
+      holo(drawReceipt(r), !keepScroll),
       el('div', { class: 'actions' }, el('button', { class: 'btn small', text: t('btn.saveImage'), onclick: () => saveImage(r) })),
     ]));
     window.scrollTo(0, keepScroll ? y : 0);
