@@ -1,6 +1,7 @@
 // Offline support: try the network first so updates arrive, fall back to the cached copy.
-const CACHE = 'receipts-v5';
-const FILES = ['./', 'index.html', 'manifest.webmanifest', 'icon.svg', 'vendor/qrcode.js'];
+const CACHE = 'receipts-v6';
+// Keep the lazy QR decoder available even before the first scan.
+const FILES = ['./', 'index.html', 'manifest.webmanifest', 'icon.svg', 'vendor/qrcode.js', 'vendor/jsQR.js'];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(FILES)).then(() => self.skipWaiting()));
