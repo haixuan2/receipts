@@ -227,10 +227,12 @@
   .empty { padding-top: 16vh; }
 
   /* Laser-foil ticket */
-  .holo { perspective: 900px; touch-action: pan-y; -webkit-user-select: none; user-select: none; }
+  .holo { perspective: 900px; display: flex; flex-direction: column; align-items: center; -webkit-user-select: none; user-select: none; }
   .holo-inner { position: relative; border-radius: 14px; transform: rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg));
     transition: transform .6s cubic-bezier(.2, .8, .2, 1); will-change: transform; }
   .holo-inner.active, .holo-inner.sweeping { transition: transform .08s linear; }
+  .holo-inner.motion { transition: none; }
+  .motion-btn { margin-top: 14px; border: 0; background: var(--card); border-radius: 999px; padding: 8px 16px; font-size: 14px; font-weight: 600; box-shadow: 0 1px 3px rgba(0,0,0,.12); }
   .holo-inner canvas { display: block; }
   .holo-foil, .holo-glare { position: absolute; inset: 0; border-radius: 14px; pointer-events: none; }
   .holo-foil {
@@ -432,6 +434,7 @@ const I18N = {
     'backup.saved': '备份已保存', 'backup.exportFail': '备份没导出成功，请重试。', 'backup.badFile': '这不是小票的备份文件。',
     'backup.nothing': '备份里的小票这里都已经有了。', 'backup.importFail': '恢复失败，可能是存储空间不够。',
     'backup.restored': '已恢复 {n} 张', 'backup.restoredSkip': '已恢复 {n} 张，跳过 {m} 张已有的',
+    'motion.enable': '✦ 开启动态光效', 'motion.denied': '没有获得“动作与方向”权限，可以在 Safari 设置里开启。',
   },
   en: {
     'app.name': 'Receipts', 'app.desc': 'Turn the spending from a trip, a day or a moment into a receipt worth keeping.',
@@ -514,6 +517,7 @@ const I18N = {
     'backup.saved': 'Backup saved', 'backup.exportFail': "Couldn't export the backup. Try again.", 'backup.badFile': "That isn't a receipts backup file.",
     'backup.nothing': 'Everything in that backup is already here.', 'backup.importFail': "Couldn't restore. Storage may be full.",
     'backup.restored': 'Restored {n}', 'backup.restoredSkip': 'Restored {n}, skipped {m} already here',
+    'motion.enable': '✦ Turn on motion effect', 'motion.denied': 'Motion access was not allowed. You can turn it on in Safari settings.',
   },
 };
 const LANGS = { zh: '中文', en: 'English' };
@@ -2146,21 +2150,28 @@ function holo(canvas, sweep) {
     inner.style.setProperty('--my', (y * 100).toFixed(1) + '%');
     inner.style.setProperty('--shine', Math.min(1, Math.hypot(x - 0.5, y - 0.5) * 2.2).toFixed(2));
   };
-  // The pointer is tracked on the outer wrapper, which never tilts. Measuring against the tilted ticket
-  // would feed the tilt back into the position (and let the ticket slip out from under the cursor at
-  // its edges), which made it shake.
-  const fromEvent = (e) => {
-    const b = wrap.getBoundingClientRect();
-    setAt((e.clientX - b.left) / b.width, (e.clientY - b.top) / b.height);
-  };
   const rest = () => { inner.classList.remove('active'); setAt(0.5, 0.5); };
-  let down = false;
-  wrap.addEventListener('pointerdown', (e) => { down = true; inner.classList.add('active'); fromEvent(e); });
-  wrap.addEventListener('pointermove', (e) => {
-    if (down || e.pointerType === 'mouse') { inner.classList.add('active'); fromEvent(e); }
-  });
-  for (const type of ['pointerup', 'pointercancel', 'pointerleave']) wrap.addEventListener(type, () => { down = false; rest(); });
   setAt(0.5, 0.5);
+
+  // On phones the ticket follows the phone's tilt (see the motion code below); fingers just scroll.
+  motionTicket = { wrap, update: (x, y) => { if (!inner.classList.contains('sweeping') && !inner.classList.contains('active')) { inner.classList.add('motion'); setAt(x, y); } } };
+  // Only touch devices have a tilt sensor worth asking for; desktop browsers may expose the API anyway.
+  if (!still && window.matchMedia('(pointer: coarse)').matches) {
+    if (needsMotionPermission()) {
+      if (!motionOn) wrap.append(el('button', { type: 'button', class: 'motion-btn', text: t('motion.enable'),
+        onclick: async (e) => { const b = e.currentTarget; if (await requestMotion()) b.remove(); else { b.remove(); toast(t('motion.denied')); } } }));
+    } else startMotion();
+  }
+
+  // Computers have no tilt sensor, so there the ticket follows the mouse. The pointer is measured on the
+  // outer wrapper, which never tilts; measuring the tilted ticket fed back into the tilt and made it shake.
+  wrap.addEventListener('pointermove', (e) => {
+    if (e.pointerType !== 'mouse') return;
+    const b = wrap.getBoundingClientRect();
+    inner.classList.add('active');
+    setAt((e.clientX - b.left) / b.width, (e.clientY - b.top) / b.height);
+  });
+  wrap.addEventListener('pointerleave', (e) => { if (e.pointerType === 'mouse') rest(); });
 
   // A one-off light sweep from left to right, with a slight turn of the ticket.
   if (sweep && !still) {
@@ -2177,6 +2188,58 @@ function holo(canvas, sweep) {
     setTimeout(() => requestAnimationFrame(step), 250);
   }
   return wrap;
+}
+
+// Phone tilt. One listener for the app moves whichever ticket is on screen. The neutral position is
+// how the phone is held when the ticket appears, and it slowly follows the hand, so only tilting
+// relative to that moves the ticket. Readings are smoothed frame by frame.
+let motionTicket = null;
+let motionOn = false;
+const MOTION_KEY = 'receipts.motion.v1';
+const motion = { base: null, target: { x: 0.5, y: 0.5 }, cur: { x: 0.5, y: 0.5 }, raf: 0 };
+// iPhone and iPad ask for permission (from a tap) before sending tilt readings; Android doesn't.
+const needsMotionPermission = () => typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function';
+function onOrientation(e) {
+  if (e.beta == null || e.gamma == null) return;
+  const angle = (screen.orientation && screen.orientation.angle) || Number(window.orientation) || 0;
+  let lr = e.gamma, fb = e.beta;
+  if (angle === 90) { lr = e.beta; fb = -e.gamma; } else if (angle === 270 || angle === -90) { lr = -e.beta; fb = e.gamma; }
+  if (!motion.base) motion.base = { lr, fb };
+  motion.base.lr += (lr - motion.base.lr) * 0.01;
+  motion.base.fb += (fb - motion.base.fb) * 0.01;
+  const clamp = (v) => Math.max(-0.5, Math.min(0.5, v));
+  motion.target.x = 0.5 + clamp((lr - motion.base.lr) / 36);
+  motion.target.y = 0.5 + clamp((fb - motion.base.fb) / 36);
+  if (!motion.raf) motion.raf = requestAnimationFrame(motionTick);
+}
+function motionTick() {
+  motion.raf = 0;
+  const m = motionTicket;
+  if (!m || !document.contains(m.wrap)) { motion.base = null; return; }
+  const c = motion.cur, g = motion.target;
+  c.x += (g.x - c.x) * 0.18; c.y += (g.y - c.y) * 0.18;
+  m.update(c.x, c.y);
+  if (Math.abs(g.x - c.x) + Math.abs(g.y - c.y) > 0.002) motion.raf = requestAnimationFrame(motionTick);
+}
+function startMotion() {
+  if (motionOn) return;
+  motionOn = true;
+  motion.base = null;
+  window.addEventListener('deviceorientation', onOrientation);
+}
+async function requestMotion() {
+  try {
+    if ((await DeviceOrientationEvent.requestPermission()) !== 'granted') return false;
+  } catch (e) { return false; }
+  try { localStorage.setItem(MOTION_KEY, '1'); } catch (e) { /* asked again next time */ }
+  startMotion();
+  return true;
+}
+// Once allowed, iOS still wants the request made from a tap on each visit; the first tap anywhere does it.
+if (needsMotionPermission()) {
+  let allowed = false;
+  try { allowed = !!localStorage.getItem(MOTION_KEY); } catch (e) { /* no memory of it */ }
+  if (allowed) document.addEventListener('click', () => { requestMotion().then((ok) => { if (ok) document.querySelectorAll('.motion-btn').forEach((b) => b.remove()); }); }, { once: true });
 }
 
 function movieSpoken(r) {
