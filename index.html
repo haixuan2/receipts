@@ -246,9 +246,9 @@
   }
 
   .recap-page { display: flex; flex-direction: column; gap: 14px; padding-top: 4px; }
-  .recap-frame { border-radius: 12px; overflow: hidden; background: #141114; min-height: 180px; display: flex; align-items: center; justify-content: center; }
+  .recap-frame { border-radius: 12px; overflow: hidden; background: #f5efe4; box-shadow: 0 1px 3px rgba(0,0,0,.08); min-height: 180px; display: flex; align-items: center; justify-content: center; }
   .recap-frame canvas { display: block; width: 100%; height: auto; }
-  .recap-wait { color: rgba(244,237,225,.6); font-size: 14px; }
+  .recap-wait { color: var(--muted); font-size: 14px; }
   .row-go { color: var(--muted); font-size: 22px; line-height: 1; }
   .recap-link span:first-child::before { content: "✦ "; color: #c9a14f; }
 
@@ -438,7 +438,7 @@ const I18N = {
     'backup.restored': '已恢复 {n} 张', 'backup.restoredSkip': '已恢复 {n} 张，跳过 {m} 张已有的',
     'rc.title': '观影年鉴', 'rc.kicker': 'MY YEAR AT THE MOVIES', 'rc.films': '部电影', 'rc.cinema': '最常去的影院', 'rc.times': '{n} 次',
     'rc.spent': '票价合计', 'rc.friend': '最常一起看', 'rc.format': '最爱的格式', 'rc.busiest': '看得最多的月份', 'rc.month': '{m} 月',
-    'rc.films.n': '{n} 部', 'rc.specials': '首映与特别场', 'rc.page': '观影年鉴', 'rc.making': '正在生成…', 'rc.save': '保存或分享图片',
+    'rc.films.n': '{n} 部', 'rc.filmsEach': '各 {n} 部', 'rc.timesEach': '各 {n} 次', 'rc.specials': '首映与特别场', 'rc.page': '观影年鉴', 'rc.making': '正在生成…', 'rc.save': '保存或分享图片',
     'rc.year': '年份', 'rc.alt': '{year} 年观影年鉴，共 {n} 部电影', 'rc.file': '观影年鉴-{year}', 'rc.entry': '{year} 观影年鉴',
     'motion.enable': '✦ 开启动态光效', 'motion.denied': '没有获得“动作与方向”权限，可以在 Safari 设置里开启。',
   },
@@ -525,7 +525,7 @@ const I18N = {
     'backup.restored': 'Restored {n}', 'backup.restoredSkip': 'Restored {n}, skipped {m} already here',
     'rc.title': 'Year in film', 'rc.kicker': 'MY YEAR AT THE MOVIES', 'rc.films': 'films', 'rc.cinema': 'MOST VISITED CINEMA', 'rc.times': '{n}×',
     'rc.spent': 'SPENT ON TICKETS', 'rc.friend': 'MOST WATCHED WITH', 'rc.format': 'FAVOURITE FORMAT', 'rc.busiest': 'BUSIEST MONTH', 'rc.month': '{en}',
-    'rc.films.n': '{n} films', 'rc.specials': 'PREMIERES AND SPECIALS', 'rc.page': 'Year in film', 'rc.making': 'Making your recap…', 'rc.save': 'Save or share image',
+    'rc.films.n': '{n} films', 'rc.filmsEach': '{n} films each', 'rc.timesEach': '{n}× each', 'rc.specials': 'PREMIERES AND SPECIALS', 'rc.page': 'Year in film', 'rc.making': 'Making your recap…', 'rc.save': 'Save or share image',
     'rc.year': 'Year', 'rc.alt': '{year} year in film, {n} films', 'rc.file': 'year-in-film-{year}', 'rc.entry': '{year} year in film',
     'motion.enable': '✦ Turn on motion effect', 'motion.denied': 'Motion access was not allowed. You can turn it on in Safari settings.',
   },
@@ -3292,13 +3292,12 @@ const movieYears = () => Array.from(new Set(state.receipts.filter((r) => r.kind 
 const moviesIn = (year) => state.receipts.filter((r) => r.kind === 'movie' && r.purchaseDate.slice(0, 4) === year)
   .sort((a, b) => (a.purchaseDate + (a.time || '')).localeCompare(b.purchaseDate + (b.time || '')));
 
-// The most frequent value, ignoring blanks; null when there is none.
+// The most frequent values (all of them when several tie) and their count; null when there are none.
 function mostOf(values) {
   const n = new Map();
   for (const v of values) if (v) n.set(v, (n.get(v) || 0) + 1);
-  let best = null;
-  for (const [v, c] of n) if (!best || c > best[1]) best = [v, c];
-  return best;
+  const top = Math.max(0, ...n.values());
+  return top ? [Array.from(n).filter(([, c]) => c === top).map(([v]) => v), top] : null;
 }
 
 function yearStats(year) {
@@ -3307,7 +3306,9 @@ function yearStats(year) {
   for (const r of ms) if (r.priceMinor != null) spent.set(r.currency, (spent.get(r.currency) || 0) + r.priceMinor);
   const months = Array.from({ length: 12 }, () => []);
   for (const r of ms) months[Number(r.purchaseDate.slice(5, 7)) - 1].push(r);
-  const busiest = months.reduce((b, m, i) => (m.length > (b ? months[b].length : 0) ? i : b), null);
+  // Every month with the most films, when that is more than one (ties are all shown).
+  const most = Math.max(...months.map((m) => m.length));
+  const busiest = most > 1 ? months.map((m, i) => (m.length === most ? i : -1)).filter((i) => i >= 0) : null;
   return {
     count: ms.length,
     months,
@@ -3316,7 +3317,7 @@ function yearStats(year) {
     spent: Array.from(spent, ([code, minor]) => formatMoney(minor, code)).join(' + '),
     friend: mostOf(ms.flatMap((r) => r.companions || [])),
     format: mostOf(ms.flatMap((r) => r.formats || [])),
-    busiest: busiest != null && months[busiest].length > 1 ? busiest : null,
+    busiest,
     specials: ms.filter((r) => r.special).length,
   };
 }
@@ -3334,7 +3335,7 @@ async function drawRecap(year, scale) {
   c.className = 'recap';
   const ctx = c.getContext('2d');
   ctx.scale(scale, scale);
-  const ink = '#f4ede1', muted = 'rgba(244,237,225,0.55)', faint = 'rgba(244,237,225,0.09)', gold = '#e3bb6c';
+  const ink = '#2a221c', muted = 'rgba(42,34,28,0.55)', faint = 'rgba(42,34,28,0.12)', gold = '#a9741f';
   const text = (str, font, x, y, color, opts) => {
     opts = opts || {};
     ctx.font = font; ctx.fillStyle = color; ctx.textAlign = opts.align || 'left'; ctx.textBaseline = opts.base || 'alphabetic';
@@ -3349,14 +3350,14 @@ async function drawRecap(year, scale) {
     return str + '…';
   };
 
-  // Background: deep warm black, a soft spotlight behind the stats, grain, and film-strip edges.
-  ctx.fillStyle = '#141114'; ctx.fillRect(0, 0, RW, RH);
-  const spot = ctx.createRadialGradient(260, 300, 40, 260, 300, 700);
-  spot.addColorStop(0, 'rgba(227,187,108,0.16)'); spot.addColorStop(1, 'rgba(227,187,108,0)');
+  // Background: warm paper, a soft golden glow behind the stats, fine grain, and film-strip edges.
+  ctx.fillStyle = '#f5efe4'; ctx.fillRect(0, 0, RW, RH);
+  const spot = ctx.createRadialGradient(260, 300, 40, 260, 300, 760);
+  spot.addColorStop(0, 'rgba(232,196,128,0.28)'); spot.addColorStop(1, 'rgba(232,196,128,0)');
   ctx.fillStyle = spot; ctx.fillRect(0, 0, RW, RH);
   const rand = rng(hash32('recap' + year));
-  for (let i = 0; i < 9000; i++) { ctx.fillStyle = rand() < 0.5 ? 'rgba(255,255,255,0.025)' : 'rgba(0,0,0,0.25)'; ctx.fillRect(rand() * RW, rand() * RH, 1.2, 1.2); }
-  ctx.fillStyle = 'rgba(244,237,225,0.07)';
+  for (let i = 0; i < 9000; i++) { ctx.fillStyle = rand() < 0.5 ? 'rgba(255,255,255,0.5)' : 'rgba(60,40,20,0.05)'; ctx.fillRect(rand() * RW, rand() * RH, 1.2, 1.2); }
+  ctx.fillStyle = 'rgba(42,34,28,0.07)';
   for (let x = 18; x < RW; x += 34) { ctx.beginPath(); ctx.roundRect(x, 12, 16, 10, 2.5); ctx.roundRect(x, RH - 22, 16, 10, 2.5); ctx.fill(); }
 
   // Left: the year, the title and the numbers.
@@ -3370,22 +3371,27 @@ async function drawRecap(year, scale) {
   text(t('rc.films'), '600 20px ' + SANS, LX + ctx.measureText(String(S.count)).width + 10, y + 4, muted);
   y += 58;
   const rows = [
-    S.cinema && [t('rc.cinema'), S.cinema[0], t('rc.times', { n: S.cinema[1] })],
+    S.cinema && [t('rc.cinema'), S.cinema[0].join(' · '), t(S.cinema[0].length > 1 ? 'rc.timesEach' : 'rc.times', { n: S.cinema[1] })],
     S.spent && [t('rc.spent'), S.spent, null],
-    S.friend && [t('rc.friend'), S.friend[0], t('rc.times', { n: S.friend[1] })],
-    S.format && [t('rc.format'), S.format[0], null],
-    S.busiest != null && [t('rc.busiest'), t('rc.month', { m: S.busiest + 1, en: MONTHS_EN[S.busiest] }), t('rc.films.n', { n: S.months[S.busiest].length })],
+    S.friend && [t('rc.friend'), S.friend[0].join(' · '), t(S.friend[0].length > 1 ? 'rc.timesEach' : 'rc.times', { n: S.friend[1] })],
+    S.format && [t('rc.format'), S.format[0].join(' · '), null],
+    S.busiest && [t('rc.busiest'), S.busiest.map((m) => t('rc.month', { m: m + 1, en: MONTHS_EN[m] })).join(' · '),
+      t(S.busiest.length > 1 ? 'rc.filmsEach' : 'rc.films.n', { n: S.months[S.busiest[0]].length })],
     S.specials && [t('rc.specials'), String(S.specials), null],
   ].filter(Boolean).slice(0, 5);
   for (const [label, value, note] of rows) {
     ctx.strokeStyle = faint; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(LX, y); ctx.lineTo(LX + 400, y); ctx.stroke();
     text(label, '600 11.5px ' + SANS, LX, y + 26, muted, { spacing: 2.4 });
-    const v = fit(value, '600 25px ' + SANS, note ? 300 : 400);
-    text(v, '600 25px ' + SANS, LX, y + 62, ink);
+    // Long values (several tied cinemas, say) get smaller type before anything is cut off.
+    const maxW = note ? 316 : 400;
+    let size = 25;
+    ctx.font = '600 ' + size + 'px ' + SANS;
+    while (size > 16 && ctx.measureText(value).width > maxW) ctx.font = '600 ' + (--size) + 'px ' + SANS;
+    text(fit(value, '600 ' + size + 'px ' + SANS, maxW), '600 ' + size + 'px ' + SANS, LX, y + 62, ink);
     if (note) text(note, '500 14px ' + SANS, LX + 400, y + 61, gold, { align: 'right' });
     y += 86;
   }
-  text(lang === 'zh' ? '小票 · RECEIPTS' : 'RECEIPTS', '600 11px ' + SANS, LX, RH - M + 6, 'rgba(244,237,225,0.35)', { spacing: 3 });
+  text(lang === 'zh' ? '小票 · RECEIPTS' : 'RECEIPTS', '600 11px ' + SANS, LX, RH - M + 6, 'rgba(42,34,28,0.35)', { spacing: 3 });
 
   // Right: twelve months, each with its films in order, poster and title.
   const GX = 540, GR = RW - M, top = M + 6, rowH = (RH - M * 2 - 12) / 12;
@@ -3395,10 +3401,10 @@ async function drawRecap(year, scale) {
     const ry = top + m * rowH;
     ctx.beginPath(); ctx.moveTo(GX, ry + rowH); ctx.lineTo(GR, ry + rowH); ctx.stroke();
     const items = S.months[m];
-    text(lang === 'zh' ? (m + 1) + '月' : MONTHS_EN[m], (lang === 'zh' ? '600 19px ' + TICKET_SERIF : '600 15px ' + SANS), GX, ry + rowH / 2 + 2, items.length ? ink : 'rgba(244,237,225,0.3)', { base: 'middle', spacing: lang === 'zh' ? 0 : 2 });
-    if (lang === 'zh') text(MONTHS_EN[m], '600 9px ' + SANS, GX + 52, ry + rowH / 2 + 2, 'rgba(244,237,225,0.3)', { base: 'middle', spacing: 1.5 });
+    text(lang === 'zh' ? (m + 1) + '月' : MONTHS_EN[m], (lang === 'zh' ? '600 19px ' + TICKET_SERIF : '600 15px ' + SANS), GX, ry + rowH / 2 + 2, items.length ? ink : 'rgba(42,34,28,0.3)', { base: 'middle', spacing: lang === 'zh' ? 0 : 2 });
+    if (lang === 'zh') text(MONTHS_EN[m], '600 9px ' + SANS, GX + 52, ry + rowH / 2 + 2, 'rgba(42,34,28,0.3)', { base: 'middle', spacing: 1.5 });
     const x0 = GX + 92, avail = GR - x0;
-    if (!items.length) { ctx.fillStyle = 'rgba(244,237,225,0.12)'; ctx.fillRect(x0, ry + rowH / 2, 26, 1.5); continue; }
+    if (!items.length) { ctx.fillStyle = 'rgba(42,34,28,0.12)'; ctx.fillRect(x0, ry + rowH / 2, 26, 1.5); continue; }
     // With titles while they fit; posters only when the month is busy; a "+n" when even that overflows.
     const withTitle = PW + 10 + 118 + 18, bare = PW + 10;
     const full = items.length * withTitle <= avail;
@@ -3409,7 +3415,7 @@ async function drawRecap(year, scale) {
       const x = x0 + i * step, py = ry + (rowH - PH) / 2;
       const img = r.posterId ? posterCache.get(r.posterId) : null;
       ctx.save();
-      ctx.shadowColor = 'rgba(0,0,0,0.5)'; ctx.shadowBlur = 8; ctx.shadowOffsetY = 3;
+      ctx.shadowColor = 'rgba(60,40,20,0.22)'; ctx.shadowBlur = 8; ctx.shadowOffsetY = 3;
       ctx.beginPath(); ctx.roundRect(x, py, PW, PH, 3);
       ctx.fillStyle = (r.colors && r.colors.accent) || '#5a4a3a'; ctx.fill();
       ctx.restore();
